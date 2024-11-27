@@ -1,4 +1,4 @@
-# EC CONTINUOUS CORRELATED VARIABLES # 
+# EC CONTINUOUS CORRELATED VARIABLES Confidence interval validation # 
 
 # Need to make the models simpler and less complex, given the small data set: 
 # https://www.kaggle.com/code/rafjaa/dealing-with-very-small-datasets
@@ -37,47 +37,23 @@ library(quantreg) # for quantile regression that tests for medians and not means
 library(factoextra)
 
 
-
 # Set working directory 
-# laptop 
-setwd("C:\\Users\\Garima\\Google Drive (garimajain2002@gmail.com)\\03 PHD_Work\\Chapter 1\\Salinity and pH Indices\\")
+getwd()
 
-soil_data <- read.csv("soil_data_allindices")
-
-# Convert EC into binary (high low salinity - threshold at 1900) and three categorical variable (high (>3000), medium (1900-3000), low (<1900))
-soil_data$EC_all <- soil_data$EC # create a copy of continuous EC values - EC will take on different values for analysis 
-#soil_data$EC_bin <- ifelse(soil_data$EC >= 1900, 1, 0)
-#soil_data$EC_cat <- ifelse(soil_data$EC < 1900, 1, ifelse(soil_data$EC < 3000, 2, 3))  
-
-#table(soil_data$EC_cat)
-#table(soil_data$EC_bin)
+soil_data <- read.csv("data/soil_data_allindices.csv")
+head(soil_data)
 
 # Select the type of EC to be used here 
 soil_data$EC <- soil_data$EC_all
-
-# As Binary or categorical
-#soil_data$EC <- soil_data$EC_bin
-#soil_data$EC <- soil_data$EC_cat
+head(soil_data)
 
 
-# Select for full data
-# soil_data <- soil_data[, c("Name", "EC", "Blue_R", "Green_R", "Red_R", "NIR_R", "SWIR1_R", "SWIR2_R",
-#                            "NDVI", "NDWI", "NDSI1", "NDSI2", "SI1", "SI2", "SI3", "SI4", "SI5", "SAVI", "VSSI",
-#                            "NBR", "NBG", "NBNIR", "NBSWIR1", "NBSWIR2", "NRSWIR1", "NRSWIR2", "NGSWIR1", "NGSWIR2",
-#                            "NNIRSWIR1", "NNIRSWIR2")]
-
-
-
-# select for highly correlated and pure band data 
+# Clean dataset
 soil_data <- soil_data[, c("Name", "EC", "Blue_R", "Green_R", "Red_R", "NIR_R", "SWIR1_R", "SWIR2_R",
                            "NBNIR", "NDSI2", "NRSWIR1", "NDWI", "SAVI")]
 
 
-# Note: SMOTE didn't work despite multiple attempts. It anyway only works on binary or categorical variables. 
-# Adapt this later for continuous variable using other functions like SMOGN (Synthetic Minority Oversampling for Regression) (package: smotefamily), an extension of SMOTE designed for continuous target variables
-
-
-####~~~~~~~~~ EC AS BINARY VARIABLE ~~~~~~~~~####
+####~~~~~~~~~ EC AS CONTINUOUS VARIABLE ~~~~~~~~~####
 
 # Prepare soil data with only numeric fields
 soil_data_numeric <- soil_data[, sapply(soil_data, is.numeric)]
@@ -94,16 +70,17 @@ results_df <- data.frame(
   CI_Upper_Test = numeric()
 )
 
-# Define calculate_metrics function with confidence intervals
-calculate_metrics <- function(actual, predicted) {
+# Define calculate_metrics function with confidence intervals (90%)
+calculate_metrics <- function(actual, predicted, confidence_level = 0.90) {
   residuals <- actual - predicted
   mse <- mean(residuals^2)
   rmse <- sqrt(mse)
   r2 <- 1 - (sum(residuals^2) / sum((actual - mean(actual))^2))
   
-  # Calculate 95% confidence interval for residuals
+  # Calculate 90% confidence interval for residuals
+  alpha <- (1 - confidence_level) / 2
   se <- sd(residuals) / sqrt(length(residuals))
-  ci <- qt(c(0.025, 0.975), df = length(residuals) - 1) * se
+  ci <- qt(c(alpha, 1 - alpha), df = length(residuals) - 1) * se
   
   return(list(
     RMSE = rmse,
@@ -151,8 +128,8 @@ for (i in 1:100) {
     test_pred <- predict(model, x_test, s = "lambda.min")
     
     # Metrics calculation
-    metrics_train <- calculate_metrics(y_train, train_pred)
-    metrics_test <- calculate_metrics(y_test, test_pred)
+    metrics_train <- calculate_metrics(y_train, train_pred, confidence_level = 0.90)
+    metrics_test <- calculate_metrics(y_test, test_pred, confidence_level = 0.90)
     
     # Append results
     results_df <- rbind(results_df, data.frame(
@@ -170,7 +147,8 @@ for (i in 1:100) {
   
   ### 3. Quantile Regression ###
   quantile_model <- tryCatch({
-    rq(EC ~ ., data = train_data, tau = 0.5)
+    rq(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
+         NDWI + NDSI2 + SAVI + NBNIR + NRSWIR1, data = train_data, tau = 0.5)
   }, error = function(e) {
     NULL
   })
@@ -179,8 +157,8 @@ for (i in 1:100) {
     train_predictions_quant <- predict(quantile_model, newdata = train_data)
     test_predictions_quant <- predict(quantile_model, newdata = test_data)
     
-    metrics_train_quant <- calculate_metrics(train_data$EC, train_predictions_quant)
-    metrics_test_quant <- calculate_metrics(test_data$EC, test_predictions_quant)
+    metrics_train_quant <- calculate_metrics(train_data$EC, train_predictions_quant, confidence_level = 0.90)
+    metrics_test_quant <- calculate_metrics(test_data$EC, test_predictions_quant, confidence_level = 0.90)
     
     results_df <- rbind(results_df, data.frame(
       Iteration = i,
@@ -194,7 +172,6 @@ for (i in 1:100) {
     ))
   }
   
-
   
   ### 4. Logarithmic with all variables ### 
   log_linear_model <- tryCatch({
@@ -209,8 +186,8 @@ for (i in 1:100) {
     train_predictions_log_linear <- exp(predict(log_linear_model, newdata = train_data))
     test_predictions_log_linear <- exp(predict(log_linear_model, newdata = test_data))
     
-    metrics_train_log_linear <- calculate_metrics(train_data$EC, train_predictions_log_linear)
-    metrics_test_log_linear <- calculate_metrics(test_data$EC, test_predictions_log_linear)
+    metrics_train_log_linear <- calculate_metrics(train_data$EC, train_predictions_log_linear, confidence_level = 0.90)
+    metrics_test_log_linear <- calculate_metrics(test_data$EC, test_predictions_log_linear, confidence_level = 0.90)
     
     results_df <- rbind(results_df, data.frame(
       Iteration = i,
@@ -239,8 +216,8 @@ for (i in 1:100) {
     train_predictions_ols <- predict(ols_model, newdata = train_data)
     test_predictions_ols <- predict(ols_model, newdata = test_data)
     
-    metrics_train_ols <- calculate_metrics(train_data$EC, train_predictions_ols)
-    metrics_test_ols <- calculate_metrics(test_data$EC, test_predictions_ols)
+    metrics_train_ols <- calculate_metrics(train_data$EC, train_predictions_ols, confidence_level = 0.90)
+    metrics_test_ols <- calculate_metrics(test_data$EC, test_predictions_ols, confidence_level = 0.90)
     
     results_df <- rbind(results_df, data.frame(
       Iteration = i,
@@ -260,7 +237,7 @@ for (i in 1:100) {
   
   poly_all <- tryCatch({
     lm(EC ~ poly(Blue_R,2) + poly(Red_R,2) + poly(Green_R,2) + poly(NIR_R,2) + poly(SWIR1_R,2) + poly(SWIR2_R,2) +
-         poly(NDWI, 2) + poly(NDSI2,2) + poly(SAVI,2) + poly(NBNIR,2) + poly(NRSWIR1,2), data = train_data)
+         poly(NDWI, 2) + poly(NDSI2,2) + poly(SAVI,2) + poly(NBNIR,2) + poly(NRSWIR1,2) , data = train_data)
   }, error = function(e) {
     message("Polynomial OLS failed on iteration: ", i)
     return(NULL)
@@ -269,8 +246,8 @@ for (i in 1:100) {
     train_predictions_poly <- predict(poly_all, newdata = train_data)
     test_predictions_poly <- predict(poly_all, newdata = test_data)
     
-    metrics_train_poly <- calculate_metrics(train_data$EC, train_predictions_poly)
-    metrics_test_poly <- calculate_metrics(test_data$EC, test_predictions_poly)
+    metrics_train_poly <- calculate_metrics(train_data$EC, train_predictions_poly, confidence_level = 0.90)
+    metrics_test_poly <- calculate_metrics(test_data$EC, test_predictions_poly, confidence_level = 0.90)
     
     # Append results for Quadratic
     results_df <- rbind(results_df, data.frame(
@@ -297,8 +274,8 @@ for (i in 1:100) {
     train_predictions_corr <- predict(poly_corr, newdata = train_data)
     test_predictions_corr <- predict(poly_corr, newdata = test_data)
     
-    metrics_train_corr <- calculate_metrics(train_data$EC, train_predictions_corr)
-    metrics_test_corr <- calculate_metrics(test_data$EC, test_predictions_corr)
+    metrics_train_corr <- calculate_metrics(train_data$EC, train_predictions_corr, confidence_level = 0.90)
+    metrics_test_corr <- calculate_metrics(test_data$EC, test_predictions_corr, confidence_level = 0.90)
     
     # Append results for Quadratic all
     results_df <- rbind(results_df, data.frame(
@@ -327,8 +304,8 @@ for (i in 1:100) {
     train_predictions_stepwise <- predict(stepwise_model, newdata = train_data)
     test_predictions_stepwise <- predict(stepwise_model, newdata = test_data)
     
-    metrics_train_stepwise <- calculate_metrics(train_data$EC, train_predictions_stepwise)
-    metrics_test_stepwise <- calculate_metrics(test_data$EC, test_predictions_stepwise)
+    metrics_train_stepwise <- calculate_metrics(train_data$EC, train_predictions_stepwise, confidence_level = 0.90)
+    metrics_test_stepwise <- calculate_metrics(test_data$EC, test_predictions_stepwise, confidence_level = 0.90)
     
     results_df <- rbind(results_df, data.frame(
       Iteration = i,
@@ -343,12 +320,11 @@ for (i in 1:100) {
   }
   
   
-  
-  
   ### 9. Random Forest ###
   rf_model <- tryCatch({
     randomForest(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-                   NDWI + NDSI2 + SAVI + NBNIR + NRSWIR1, data = train_data, ntree = 500, maxnodes = 6) # use reduced tree depth for small dataset and tune the parameters till the results get better (ntree is higher the better, could also try sampsize to pick a certain number of observations in each try)
+                   NDWI + NDSI2 + SAVI + NBNIR + NRSWIR1, 
+                 data = train_data, ntree = 500, maxnodes = 6) # use reduced tree depth for small dataset and tune the parameters till the results get better (ntree is higher the better, could also try sampsize to pick a certain number of observations in each try)
   }, error = function(e) {
     message("Random Forest failed on iteration: ", i)
     return(NULL)
@@ -358,8 +334,8 @@ for (i in 1:100) {
     train_predictions_rf <- predict(rf_model, newdata = train_data)
     test_predictions_rf <- predict(rf_model, newdata = test_data)
     
-    metrics_train_rf <- calculate_metrics(train_data$EC, train_predictions_rf)
-    metrics_test_rf <- calculate_metrics(test_data$EC, test_predictions_rf)
+    metrics_train_rf <- calculate_metrics(train_data$EC, train_predictions_rf, confidence_level = 0.90)
+    metrics_test_rf <- calculate_metrics(test_data$EC, test_predictions_rf, confidence_level = 0.90)
     
     # Append results for Random Forest
     results_df <- rbind(results_df, data.frame(
@@ -388,8 +364,8 @@ for (i in 1:100) {
     train_predictions_bagging <- predict(bagging_model, newdata = train_data)
     test_predictions_bagging <- predict(bagging_model, newdata = test_data)
     
-    metrics_train_bagging <- calculate_metrics(train_data$EC, train_predictions_bagging)
-    metrics_test_bagging <- calculate_metrics(test_data$EC, test_predictions_bagging)
+    metrics_train_bagging <- calculate_metrics(train_data$EC, train_predictions_bagging, confidence_level = 0.90)
+    metrics_test_bagging <- calculate_metrics(test_data$EC, test_predictions_bagging, confidence_level = 0.90)
     
     results_df <- rbind(results_df, data.frame(
       Iteration = i,
@@ -405,10 +381,19 @@ for (i in 1:100) {
   
   ### 11. Artificial Neural Network (ANN) ###
   
-  # Scale data for ANN
-  train_data_scaled <- scale_numeric(train_data)
+  # Step 1: Scale EC manually
+  ec_min <- min(train_data$EC, na.rm = TRUE)
+  ec_max <- max(train_data$EC, na.rm = TRUE)
+  train_data$EC_scaled <- (train_data$EC - ec_min) / (ec_max - ec_min)
+  
+  # Step 2: Scale other numeric predictors
+  train_data_scaled <- scale_numeric(train_data[, -which(names(train_data) == "EC_scaled")])
   test_data_scaled <- scale_numeric(test_data)
   
+  # Add EC_scaled back into scaled data
+  train_data_scaled$EC_scaled <- train_data$EC_scaled
+  
+  # Step 3: Train ANN
   ann_model <- tryCatch({
     nnet(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
            NDWI + NDSI2 + SAVI + NBNIR + NRSWIR1, data = train_data_scaled, size = 4, linout = TRUE, maxit = 100)
@@ -417,15 +402,23 @@ for (i in 1:100) {
     return(NULL)
   })
   
+  # Step 4: Make predictions
   if (!is.null(ann_model)) {
     train_predictions_ann <- predict(ann_model, newdata = train_data_scaled)
     test_predictions_ann <- predict(ann_model, newdata = test_data_scaled)
     
-    train_predictions_ann_rescaled <- reverse_scale(train_predictions_ann, train_data$EC)
-    test_predictions_ann_rescaled <- reverse_scale(test_predictions_ann, test_data$EC)
+    # Rescale predictions back to original EC scale
+    train_predictions_ann_rescaled <- train_predictions_ann * (ec_max - ec_min) + ec_min
+    test_predictions_ann_rescaled <- test_predictions_ann * (ec_max - ec_min) + ec_min
     
-    metrics_train_ann <- calculate_metrics(train_data$EC, train_predictions_ann_rescaled)
-    metrics_test_ann <- calculate_metrics(test_data$EC, test_predictions_ann_rescaled)
+    #!! These ranges should be the same. It is likley that the data is not rescaled properly. 
+    range(train_data)
+    range(train_predictions_ann_rescaled)
+    range(test_predictions_ann_rescaled)
+    
+    # Step 5: Evaluate model performance
+    metrics_train_ann <- calculate_metrics(train_data$EC, train_predictions_ann_rescaled, confidence_level = 0.90)
+    metrics_test_ann <- calculate_metrics(test_data$EC, test_predictions_ann_rescaled, confidence_level = 0.90)
     
     results_df <- rbind(results_df, data.frame(
       Iteration = i,
@@ -447,6 +440,5 @@ for (i in 1:100) {
 }
 
 # Save results to a CSV file
-write.csv(results_df, "smalldata_model_results_continuous_corr_80_20.csv")
-
-
+write.csv(results_df, "outputs/smalldata_model_results_ECcont_CorrVar_90CI_80_20.csv")
+# ! For some reason Quantile Regression is not returning a result. Check later

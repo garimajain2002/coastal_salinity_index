@@ -16,31 +16,56 @@ library(scales) # for scaling data from 0 to 1
 
 getwd()
 
+soil_data <- read.csv("data/soil_data_allindices.csv")
+head(soil_data)
 
-# ============== 1. create binary EC values ==================
-soil_data <- read.csv('data/soil_data_reflectance.csv')
+# Select the type of EC to be used here 
+soil_data$EC <- soil_data$EC_bin
+head(soil_data)
 
-# Convert EC into binary (high low salinity - threshold at 1900) and three categorical variable (high (>3000), medium (1900-3000), low (<1900))
-soil_data$EC_all <- soil_data$EC # create a copy of continuous EC values - EC will take on different values for analysis 
-soil_data$EC_bin <- ifelse(soil_data$EC >= 1900, 1, 0)
-soil_data$EC_cat <- ifelse(soil_data$EC < 1400, 0, 
-                           ifelse(soil_data$EC < 3000, 1, 2))  
-# Note- binary is 1 and 2 and not 0 and 1 to make log functions work
-table(soil_data$EC_bin)
-table(soil_data$EC_cat)
+
+# Clean dataset
+soil_data <- soil_data[, c("Name", "EC", "Blue_R", "Green_R", "Red_R", "NIR_R", "SWIR1_R", "SWIR2_R",
+                           "NDVI", "NDWI", "NDSI1", "NDSI2", "SI1", "SI2", "SI3", "SI4", "SI5", "SAVI", "VSSI",
+                           "NBR", "NBG", "NBNIR", "NBSWIR1", "NBSWIR2", "NRSWIR1", "NRSWIR2", "NGSWIR1", "NGSWIR2",
+                           "NNIRSWIR1", "NNIRSWIR2")]
 
 # ================ 2. Prepare data ===============
-# Pick an appropriate y metric here to run the following analysis (EC_bin, EC_cat, EC_all)
+# Prepare soil data with only numeric fields
 soil_data_numeric <- soil_data[, sapply(soil_data, is.numeric)]
-soil_data_numeric$EC <- soil_data_numeric$EC_bin
-# Convert EC to a binary factor
 soil_data_numeric$EC <- as.factor(soil_data_numeric$EC)
+
+# ================= feature selection with LASSO =====================
+head(soil_data_numeric)
+
+drop.cols <- c('EC')
+x <- soil_data_numeric %>% dplyr::select(-one_of(drop.cols))
+# scale x
+for(i in 1:ncol(x)){
+  x[, i] <- rescale(x[, i])
+}
+x <- data.matrix(x)
+
+y <- soil_data_numeric$EC
+table(y)
+
+cvmodel <- cv.glmnet(x, y, alpha=1, family='binomial') # did not converge
+plot(cvmodel)
+best_lambda <- cvmodel$lambda.min
+best_lambda
+
+# we can also tweak lambda to see
+bestlasso <- glmnet(x, y, alpha=1, lambda=best_lambda, family='binomial')
+coef(bestlasso)
+# selected predictors
+# Green_R, SWIR2_R, NDWI, NBNIR, NBSWIR2, NRSWIR1, NNIRSWIR1
+
+
 
 
 #### Stratified Sampling  #####
 
 #### With Stratified sampling for training and testing data along with 10-fold###
-# ! Almost all results are too accurate. Possibly overfitting. 
 
 # Initialize an empty dataframe to store classification results
 results_df <- data.frame(
@@ -118,10 +143,7 @@ for (i in 1:100) {
   ### 1. Logistic Regression Model ###
   logistic_model <- tryCatch({
     train(
-      #EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      #      NBNIR + NDSI2 + NRSWIR1 + NDWI + SAVI,
-      EC ~ NDWI + NDSI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
-        NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
+      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
       data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
     
   }, error = function(e) {
@@ -130,8 +152,8 @@ for (i in 1:100) {
   })
   
   if (!is.null(logistic_model)) {
-    train_pred_class <- predict(b, newdata = train_data)
-    test_pred_class <- predict(b, newdata = test_data)
+    train_pred_class <- predict(logistic_model, newdata = train_data)
+    test_pred_class <- predict(logistic_model, newdata = test_data)
     
     metrics_train_logistic <- calculate_classification_metrics(train_data$EC, train_pred_class)
     metrics_test_logistic <- calculate_classification_metrics(test_data$EC, test_pred_class)
@@ -149,36 +171,28 @@ for (i in 1:100) {
   
   ### 2. Random Forest Model ###
   rf_model <- tryCatch({
-    
-    mtry <- 5
-    tunegrid <- expand.grid(.mtry=mtry)
-    
-    
-    for (maxnode in c(2, 5, 10, 15, 20)){
-      set.seed(123)
-      print(maxnode)
-      fit <- train(EC ~ NDWI + NDSI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
-                     NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
-                   data = train_data,
-                   method = 'rf',
-                   metric = 'Accuracy',
-                   tuneGrid = tunegrid,
-                   trControl = train_control,
-                   maxnodes = maxnode,
-                   ntree = 1500)
-      # key <- toString(ntree)
-      # modellist[[key]] <- fit
-      print(fit)
-    }
-    
-    
-    
-    
+    # mtry <- 5
+    # tunegrid <- expand.grid(.mtry=mtry)
+    # 
+    # for (maxnode in c(2, 5, 10, 15, 20)){
+    #   set.seed(123)
+    #   print(maxnode)
+    #   fit <- train(EC ~ NDWI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
+    #                  NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
+    #                data = train_data,
+    #                method = 'rf',
+    #                metric = 'Accuracy',
+    #                tuneGrid = tunegrid,
+    #                trControl = train_control,
+    #                maxnodes = maxnode,
+    #                ntree = 1500)
+    #   # key <- toString(ntree)
+    #   # modellist[[key]] <- fit
+    #   print(fit)
+    # }
+ 
     randomForest(
-      #EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      #      NBNIR + NDSI2 + NRSWIR1 + NDWI + SAVI,
-      EC ~ NDWI + NDSI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
-        NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
+        EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1,
       data = train_data, ntree = 1500,
       mtry = max(5, floor(sqrt(ncol(train_data) - 1))),
       nodesize = 1, maxnodes = 15
@@ -213,10 +227,7 @@ for (i in 1:100) {
   
   ann_model <- tryCatch({
     nnet(
-      #EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      #      NBNIR + NDSI2 + NRSWIR1 + NDWI + SAVI,
-      EC ~ NDWI + NDSI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
-        NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
+      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
       data = train_data_scaled, size = 4, linout = FALSE, maxit = 100)
   }, error = function(e) {
     message("ANN failed on iteration: ", i)
@@ -248,23 +259,57 @@ for (i in 1:100) {
 print("Final Summary")
 print(summary(results_df))
 
+write.csv(results_df, "outputs/smalldata_model_results_ECbin_lasso_80_20strat.csv")
+
+
+
+
 
 #### Random Sampling  #####
-# !! In this RF was giving very good results but Logistic was only returning 0s. 
-# !! Now logistic is not even working and RF is returning 0s. 
-
-# ^ haha I think this is because the metrics you're using were for regression
-# rather than classification. Classification is our task for the binary EC.
-# In the above code (starting from line 1722) you used the correct metrics.
-
-
 # # Initialize an empty dataframe to store results
-results_df_rand <- data.frame(
+results_df <- data.frame(
   Iteration = integer(),
   Model_Type = character(),
   Accuracy_Train = numeric(),
-  Accuracy_Test = numeric()
+  Accuracy_Test = numeric(),
+  Precision = numeric(),
+  Recall = numeric(),
+  F1_Score = numeric()
 )
+
+# Define functions
+calculate_classification_metrics <- function(actual, predicted) {
+  confusion <- table(factor(actual, levels = c(0, 1)), factor(predicted, levels = c(0, 1)))
+  
+  TN <- ifelse(!is.na(confusion[1, 1]), confusion[1, 1], 0) # True Negative
+  FP <- ifelse(!is.na(confusion[1, 2]), confusion[1, 2], 0) # False Positive
+  FN <- ifelse(!is.na(confusion[2, 1]), confusion[2, 1], 0) # False Negative
+  TP <- ifelse(!is.na(confusion[2, 2]), confusion[2, 2], 0) # True Positive
+  
+  accuracy <- (TP + TN) / (TN + FP + FN + TP)
+  precision <- ifelse((TP + FP) > 0, TP / (TP + FP), NA)
+  recall <- ifelse((TP + FN) > 0, TP / (TP + FN), NA)
+  f1_score <- ifelse(!is.na(precision) && !is.na(recall) && (precision + recall) > 0,
+                     2 * (precision * recall) / (precision + recall), NA)
+  
+  return(list(
+    Accuracy = accuracy,
+    Precision = precision,
+    Recall = recall,
+    F1_Score = f1_score
+  ))
+}
+
+scale_numeric <- function(data) {
+  # Get numeric columns
+  numeric_cols <- sapply(data, is.numeric)
+  
+  # Scale numeric columns
+  scaled_data <- data
+  scaled_data[, numeric_cols] <- scale(data[, numeric_cols])
+  
+  return(scaled_data)
+}
 
 for (i in 1:100) {
   print(paste("Iteration:", i))
@@ -294,11 +339,9 @@ for (i in 1:100) {
   ### 1. Logistic Regression Model ###
   logistic_model <- tryCatch({
     train(
-      #EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      #      NBNIR + NDSI2 + NRSWIR1 + NDWI + SAVI,
-      EC ~ NDWI + NDSI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
-        NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
+      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
       data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
+    
   }, error = function(e) {
     message("Logistic model failed on iteration: ", i)
     return(NULL)
@@ -311,7 +354,7 @@ for (i in 1:100) {
     metrics_train_logistic <- calculate_classification_metrics(train_data$EC, train_pred_class)
     metrics_test_logistic <- calculate_classification_metrics(test_data$EC, test_pred_class)
     
-    results_df_rand <- rbind(results_df_rand, data.frame(
+    results_df <- rbind(results_df, data.frame(
       Iteration = i,
       Model_Type = "Logistic",
       Accuracy_Train = metrics_train_logistic$Accuracy,
@@ -324,12 +367,29 @@ for (i in 1:100) {
   
   ### 2. Random Forest Model ###
   rf_model <- tryCatch({
+    # mtry <- 5
+    # tunegrid <- expand.grid(.mtry=mtry)
+    # 
+    # for (maxnode in c(2, 5, 10, 15, 20)){
+    #   set.seed(123)
+    #   print(maxnode)
+    #   fit <- train(EC ~ NDWI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
+    #                  NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
+    #                data = train_data,
+    #                method = 'rf',
+    #                metric = 'Accuracy',
+    #                tuneGrid = tunegrid,
+    #                trControl = train_control,
+    #                maxnodes = maxnode,
+    #                ntree = 1500)
+    #   # key <- toString(ntree)
+    #   # modellist[[key]] <- fit
+    #   print(fit)
+    # }
+    
     randomForest(
-      #EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      #      NBNIR + NDSI2 + NRSWIR1 + NDWI + SAVI,
-      EC ~ NDWI + NDSI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
-        NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
-      data = train_data, ntree = 100,
+      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1,
+      data = train_data, ntree = 1500,
       mtry = max(5, floor(sqrt(ncol(train_data) - 1))),
       nodesize = 1, maxnodes = 15
     )
@@ -346,7 +406,7 @@ for (i in 1:100) {
     metrics_train_rf <- calculate_classification_metrics(train_data$EC, train_pred_class)
     metrics_test_rf <- calculate_classification_metrics(test_data$EC, test_pred_class)
     
-    results_df_rand <- rbind(results_df_rand, data.frame(
+    results_df <- rbind(results_df, data.frame(
       Iteration = i,
       Model_Type = "Random Forest",
       Accuracy_Train = metrics_train_rf$Accuracy,
@@ -363,10 +423,7 @@ for (i in 1:100) {
   
   ann_model <- tryCatch({
     nnet(
-      #EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      #      NBNIR + NDSI2 + NRSWIR1 + NDWI + SAVI,
-      EC ~ NDWI + NDSI + Green_R + SWIR2_R + NBR + NBNIR + NBSWIR2 + 
-        NRSWIR2 + NGSWIR1 + NDSI1 + VSSI,
+      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
       data = train_data_scaled, size = 4, linout = FALSE, maxit = 100)
   }, error = function(e) {
     message("ANN failed on iteration: ", i)
@@ -380,7 +437,7 @@ for (i in 1:100) {
     metrics_train_ann <- calculate_classification_metrics(train_data$EC, train_pred_class)
     metrics_test_ann <- calculate_classification_metrics(test_data$EC, test_pred_class)
     
-    results_df_rand <- rbind(results_df_rand, data.frame(
+    results_df <- rbind(results_df, data.frame(
       Iteration = i,
       Model_Type = "ANN",
       Accuracy_Train = metrics_train_ann$Accuracy,
@@ -391,7 +448,12 @@ for (i in 1:100) {
     ))
   }
   
-  print(paste("Results so far:", nrow(results_df_rand)))
+  print(paste("Results so far:", nrow(results_df)))
 }
 
-summary(results_df_rand)
+# Print summary of results
+print("Final Summary")
+print(summary(results_df))
+
+write.csv(results_df, "outputs/smalldata_model_results_ECbin_lasso_80_20random.csv")
+
