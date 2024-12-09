@@ -20,7 +20,7 @@ soil_data <- read.csv("data/soil_data_allindices.csv")
 head(soil_data)
 
 # Select the type of EC to be used here 
-soil_data$EC <- soil_data$EC_bin
+soil_data$EC <- soil_data$EC_cat
 head(soil_data)
 
 
@@ -49,16 +49,16 @@ x <- data.matrix(x)
 y <- soil_data_numeric$EC
 table(y)
 
-cvmodel <- cv.glmnet(x, y, alpha=1, family='binomial') # did not converge
+cvmodel <- cv.glmnet(x, y, alpha=1, family = 'multinomial') # did not converge
 plot(cvmodel)
 best_lambda <- cvmodel$lambda.min
 best_lambda
 
 # we can also tweak lambda to see
-bestlasso <- glmnet(x, y, alpha=1, lambda=best_lambda, family='binomial')
+bestlasso <- glmnet(x, y, alpha=1, lambda=best_lambda, family = 'multinomial')
 coef(bestlasso)
 # selected predictors
-# Green_R, SWIR2_R, NDWI, NBNIR, NBSWIR2, NRSWIR1, NNIRSWIR1
+# NDWI, SI4
 
 
 
@@ -140,34 +140,34 @@ for (i in 1:100) {
   # Define training control for cross-validation
   train_control <- trainControl(method = "cv", number = 10)
   
-  ### 1. Logistic Regression Model ###
-  logistic_model <- tryCatch({
-    train(
-      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
-      data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
-    
-  }, error = function(e) {
-    message("Logistic model failed on iteration: ", i)
-    return(NULL)
-  })
-  
-  if (!is.null(logistic_model)) {
-    train_pred_class <- predict(logistic_model, newdata = train_data)
-    test_pred_class <- predict(logistic_model, newdata = test_data)
-    
-    metrics_train_logistic <- calculate_classification_metrics(train_data$EC, train_pred_class)
-    metrics_test_logistic <- calculate_classification_metrics(test_data$EC, test_pred_class)
-    
-    results_df <- rbind(results_df, data.frame(
-      Iteration = i,
-      Model_Type = "Logistic",
-      Accuracy_Train = metrics_train_logistic$Accuracy,
-      Accuracy_Test = metrics_test_logistic$Accuracy,
-      Precision = metrics_test_logistic$Precision,
-      Recall = metrics_test_logistic$Recall,
-      F1_Score = metrics_test_logistic$F1_Score
-    ))
-  }
+  # ### 1. Logistic Regression Model ###
+  # logistic_model <- tryCatch({
+  #   train(
+  #     EC ~ NDWI + SI4, 
+  #     data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
+  #   
+  # }, error = function(e) {
+  #   message("Logistic model failed on iteration: ", i)
+  #   return(NULL)
+  # })
+  # 
+  # if (!is.null(logistic_model)) {
+  #   train_pred_class <- predict(logistic_model, newdata = train_data)
+  #   test_pred_class <- predict(logistic_model, newdata = test_data)
+  #   
+  #   metrics_train_logistic <- calculate_classification_metrics(train_data$EC, train_pred_class)
+  #   metrics_test_logistic <- calculate_classification_metrics(test_data$EC, test_pred_class)
+  #   
+  #   results_df <- rbind(results_df, data.frame(
+  #     Iteration = i,
+  #     Model_Type = "Logistic",
+  #     Accuracy_Train = metrics_train_logistic$Accuracy,
+  #     Accuracy_Test = metrics_test_logistic$Accuracy,
+  #     Precision = metrics_test_logistic$Precision,
+  #     Recall = metrics_test_logistic$Recall,
+  #     F1_Score = metrics_test_logistic$F1_Score
+  #   ))
+  # }
   
   ### 2. Random Forest Model ###
   rf_model <- tryCatch({
@@ -192,7 +192,7 @@ for (i in 1:100) {
     # }
  
     randomForest(
-        EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1,
+        EC ~ NDWI + SI4,
       data = train_data, ntree = 1500,
       mtry = max(5, floor(sqrt(ncol(train_data) - 1))),
       nodesize = 1, maxnodes = 15
@@ -227,7 +227,7 @@ for (i in 1:100) {
   
   ann_model <- tryCatch({
     nnet(
-      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
+      EC ~ NDWI + SI4, 
       data = train_data_scaled, size = 4, linout = FALSE, maxit = 100)
   }, error = function(e) {
     message("ANN failed on iteration: ", i)
@@ -259,7 +259,7 @@ for (i in 1:100) {
 print("Final Summary")
 print(summary(results_df))
 
-write.csv(results_df, "outputs/smalldata_model_results_ECbin_lasso_80_20strat.csv")
+write.csv(results_df, "outputs/smalldata_model_results_ECCat_lasso_80_20strat.csv")
 
 
 
@@ -336,35 +336,35 @@ for (i in 1:100) {
   # Define training control for cross-validation
   train_control <- trainControl(method = "cv", number = 10)
   
-  ### 1. Logistic Regression Model ###
-  logistic_model <- tryCatch({
-    train(
-      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
-      data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
-    
-  }, error = function(e) {
-    message("Logistic model failed on iteration: ", i)
-    return(NULL)
-  })
-  
-  if (!is.null(logistic_model)) {
-    train_pred_class <- predict(logistic_model, newdata = train_data)
-    test_pred_class <- predict(logistic_model, newdata = test_data)
-    
-    metrics_train_logistic <- calculate_classification_metrics(train_data$EC, train_pred_class)
-    metrics_test_logistic <- calculate_classification_metrics(test_data$EC, test_pred_class)
-    
-    results_df <- rbind(results_df, data.frame(
-      Iteration = i,
-      Model_Type = "Logistic",
-      Accuracy_Train = metrics_train_logistic$Accuracy,
-      Accuracy_Test = metrics_test_logistic$Accuracy,
-      Precision = metrics_test_logistic$Precision,
-      Recall = metrics_test_logistic$Recall,
-      F1_Score = metrics_test_logistic$F1_Score
-    ))
-  }
-  
+  # ### 1. Logistic Regression Model ###
+  # logistic_model <- tryCatch({
+  #   train(
+  #     EC ~ NDWI + SI4, 
+  #     data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
+  #   
+  # }, error = function(e) {
+  #   message("Logistic model failed on iteration: ", i)
+  #   return(NULL)
+  # })
+  # 
+  # if (!is.null(logistic_model)) {
+  #   train_pred_class <- predict(logistic_model, newdata = train_data)
+  #   test_pred_class <- predict(logistic_model, newdata = test_data)
+  #   
+  #   metrics_train_logistic <- calculate_classification_metrics(train_data$EC, train_pred_class)
+  #   metrics_test_logistic <- calculate_classification_metrics(test_data$EC, test_pred_class)
+  #   
+  #   results_df <- rbind(results_df, data.frame(
+  #     Iteration = i,
+  #     Model_Type = "Logistic",
+  #     Accuracy_Train = metrics_train_logistic$Accuracy,
+  #     Accuracy_Test = metrics_test_logistic$Accuracy,
+  #     Precision = metrics_test_logistic$Precision,
+  #     Recall = metrics_test_logistic$Recall,
+  #     F1_Score = metrics_test_logistic$F1_Score
+  #   ))
+  # }
+  # 
   ### 2. Random Forest Model ###
   rf_model <- tryCatch({
     # mtry <- 5
@@ -388,7 +388,7 @@ for (i in 1:100) {
     # }
     
     randomForest(
-      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1,
+      EC ~ NDWI + SI4,
       data = train_data, ntree = 1500,
       mtry = max(5, floor(sqrt(ncol(train_data) - 1))),
       nodesize = 1, maxnodes = 15
@@ -423,7 +423,7 @@ for (i in 1:100) {
   
   ann_model <- tryCatch({
     nnet(
-      EC ~ Green_R + SWIR2_R + NDWI + NBNIR + NBSWIR2 + NRSWIR1 + NNIRSWIR1, 
+      EC ~ NDWI + SI4, 
       data = train_data_scaled, size = 4, linout = FALSE, maxit = 100)
   }, error = function(e) {
     message("ANN failed on iteration: ", i)
@@ -455,5 +455,5 @@ for (i in 1:100) {
 print("Final Summary")
 print(summary(results_df))
 
-write.csv(results_df, "outputs/smalldata_model_results_ECbin_lasso_80_20random.csv")
+write.csv(results_df, "outputs/smalldata_model_results_ECCat_lasso_80_20random.csv")
 
