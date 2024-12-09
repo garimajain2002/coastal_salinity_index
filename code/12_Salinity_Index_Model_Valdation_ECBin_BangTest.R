@@ -14,6 +14,8 @@ library(MASS) # for stepwise regression
 library(dplyr)
 library(scales) # for scaling data from 0 to 1
 
+
+# Read data sets for training and testing 
 getwd()
 
 soil_data <- read.csv("data/soil_data_allindices.csv")
@@ -29,7 +31,7 @@ head(soil_data)
 soil_data_bang$EC <- soil_data_bang$EC_bin
 
 
-# Clean datasets
+# Clean datasets to be similar
 soil_data <- soil_data[, c("Name", "EC", "Blue_R", "Green_R", "Red_R", "NIR_R", "SWIR1_R", "SWIR2_R",
                            "NDVI", "NDWI", "NDSI1", "NDSI2", "SI1", "SI2", "SI3", "SI4", "SI5", "SAVI", "VSSI",
                            "NBR", "NBG", "NBNIR", "NBSWIR1", "NBSWIR2", "NRSWIR1", "NRSWIR2", "NGSWIR1", "NGSWIR2",
@@ -43,23 +45,61 @@ soil_data_bang <- soil_data_bang[, c("Name", "EC", "Blue_R", "Green_R", "Red_R",
 
 soil_data_numeric <- soil_data[, sapply(soil_data, is.numeric)]
 soil_data_bang_numeric <- soil_data_bang[, sapply(soil_data_bang, is.numeric)]
-  
-soil_data_numeric$EC <- as.factor(soil_data_numeric$EC)
-soil_data_bang_numeric$EC <- as.factor(soil_data_bang_numeric$EC)
 
 
-# ================= feature selection with LASSO =====================
-head(soil_data_numeric)
+# Run the models using soil_data as training data, and soil_data_bang as testing data 
+train_data <- soil_data_numeric
+test_data <-  soil_data_bang_numeric
+
+
+## Address small dataset issues 
+# 1. Data imbalance - downsample
+table(train_data$EC) 
+#library(caret)
+train_control <- trainControl(method = "cv", number = 10, sampling = "down")
+
+# 2. Scale and center predictors
+preprocessor <- preProcess(train_data[, -which(names(train_data) == "EC")], method = c("center", "scale"))
+train_data_scaled <- predict(preprocessor, train_data)
+
+# 3. Inspect predictors for outliers 
+boxplot(train_data$Blue_R, main = "Blue_R")
+boxplot(train_data$Red_R, main = "Red_R")
+boxplot(train_data$Green_R, main = "Green_R")
+boxplot(train_data$NIR_R, main = "NIR_R")
+boxplot(train_data$SWIR1_R, main = "SWIR1_R")
+boxplot(train_data$SWIR2_R, main = "SWIR2_R")
+# Red, green and NIR have outlier data 
+
+# Apply Winsorization (cap outliers)
+winsorize <- function(data, column) {
+  Q1 <- quantile(data[[column]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(data[[column]], 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data[[column]] <- pmax(pmin(data[[column]], upper_bound), lower_bound)
+  return(data)
+}
+
+for (column in predictors) {
+  train_data <- winsorize(train_data, column)
+}
+
+
+# 4.Feature selection with LASSO
+train_data_numeric <- train_data[, sapply(train_data, is.numeric)]
+head(train_data_numeric)
 
 drop.cols <- c('EC')
-x <- soil_data_numeric %>% dplyr::select(-one_of(drop.cols))
+x <- train_data_numeric %>% dplyr::select(-one_of(drop.cols))
 # scale x
 for(i in 1:ncol(x)){
   x[, i] <- rescale(x[, i])
 }
 x <- data.matrix(x)
 
-y <- soil_data_numeric$EC
+y <- train_data_numeric$EC
 table(y)
 
 cvmodel <- cv.glmnet(x, y, alpha=1, family='binomial') # did not converge
@@ -71,15 +111,9 @@ best_lambda
 bestlasso <- glmnet(x, y, alpha=1, lambda=best_lambda, family='binomial')
 coef(bestlasso)
 # selected predictors
-# Green_R, SWIR2_R, NDWI, NDSI1, SI1, SI2, VSSI, NBR, NBNIR, NBSWIR2, NGSWIR1
+# Green_R, SWIR2_R, NDWI, NDSI1, NBNIR, NBSWIR2, NRSWIR1, NGSWIR1, NNIRSWIR1
 
 
-# Run the three models this time using soil_data as training data, and soil_data_bang as testing data 
-train_data <- soil_data
-test_data <-  soil_data_bang 
-
-train_data$EC <- as.factor(train_data$EC)
-test_data$EC <- as.factor(test_data$EC)  
 
 # Record results in one data frame
 results_df <- data.frame(
@@ -92,8 +126,16 @@ results_df <- data.frame(
 )
   
 ### 1. Logistic model 
+library(caret)
+findLinearCombos(train_data[, c("Blue_R", "Red_R", "Green_R", "NIR_R", "SWIR1_R", "SWIR2_R", 
+                                "NDVI", "NDWI", "NDSI1", "NDSI2", "SI1", "SI2", "SI3", "SI4", "SI5", "SAVI", "VSSI",  
+                                "NBR", "NBG", "NBNIR", "NBSWIR1", "NBSWIR2", "NRSWIR1", "NRSWIR2", "NGSWIR1", "NGSWIR2", "NNIRSWIR1", "NNIRSWIR2")])
+
+train_data$EC <- as.factor(train_data$EC)
+test_data$EC <- as.factor(test_data$EC)
+
 logistic_model <- train(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      NDVI + NDWI + NDSI1 + NDSI2 + SI1 + SI2 + SI3 + SI4 + SI5 + SAVI + VSSI + 
+      NDVI + NDWI + NDSI1 + NDSI2 + SI1 + SI2 + SI3 + SI4 + SI5 + SAVI + VSSI +
       NBR + NBG + NBNIR + NBSWIR1 + NBSWIR2 + NRSWIR1 + NRSWIR2 + NGSWIR1 + NGSWIR2 + NNIRSWIR1 + NNIRSWIR2, 
     data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
 
@@ -113,8 +155,8 @@ logistic_model <- train(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_
     F1_Score = metrics_test_logistic$F1_Score
   ))
 
-  ### 2. Logistic model - Lasso (Green_R, SWIR2_R, NDWI, NDSI1, SI1, SI2, VSSI, NBR, NBNIR, NBSWIR2, NGSWIR1)
-  logistic_model_lasso <- train(EC ~ Green_R + SWIR2_R + NDWI + NDSI1 + SI1 + SI2 + VSSI + NBR + NBNIR + NBSWIR2 + NGSWIR1, 
+  ### 2. Logistic model - Lasso (Green_R, SWIR2_R, NDWI, NDSI1, NBNIR, NBSWIR2, NRSWIR1, NGSWIR1, NNIRSWIR1)
+  logistic_model_lasso <- train(EC ~ Green_R + SWIR2_R + NDWI + NDSI1 + NBNIR + NBSWIR2 + NRSWIR1 + NGSWIR1 + NNIRSWIR1, 
                           data = train_data, method = "glm", family = binomial(link='logit'), trControl = train_control)
   
   train_pred_class <- predict(logistic_model_lasso, newdata = train_data)
@@ -159,7 +201,7 @@ logistic_model <- train(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_
 
   ### 4. Random Forest Model with bagging - Lasso ###
   rf_model_lasso <- randomForest(
-    EC ~ Green_R + SWIR2_R + NDWI + NDSI1 + SI1 + SI2 + VSSI + NBR + NBNIR + NBSWIR2 + NGSWIR1,
+    EC ~ Green_R + SWIR2_R + NDWI + NDSI1 + NBNIR + NBSWIR2 + NRSWIR1 + NGSWIR1 + NNIRSWIR1, 
     data = train_data, ntree = 1500,
     mtry = max(5, floor(sqrt(ncol(train_data) - 1))),
     nodesize = 1, maxnodes = 15)
@@ -214,7 +256,7 @@ ann_model <- nnet(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R +
   train_data_scaled$EC <- as.factor(train_data_scaled$EC)
   test_data_scaled$EC <- as.factor(test_data_scaled$EC)
   
-  ann_model_lasso <- nnet(EC ~ Green_R + SWIR2_R + NDWI + NDSI1 + SI1 + SI2 + VSSI + NBR + NBNIR + NBSWIR2 + NGSWIR1, 
+  ann_model_lasso <- nnet(EC ~ Green_R + SWIR2_R + NDWI + NDSI1 + NBNIR + NBSWIR2 + NRSWIR1 + NGSWIR1 + NNIRSWIR1,  
                     data = train_data_scaled, size = 4, linout = FALSE, maxit = 100)
   
   train_pred_class <- predict(ann_model_lasso, newdata = train_data_scaled, type = "class")
@@ -231,6 +273,7 @@ ann_model <- nnet(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R +
     Recall = metrics_test_ann_lasso$Recall,
     F1_Score = metrics_test_ann_lasso$F1_Score
   ))
+
   
   
 write.csv(results_df, "outputs/bang_validation_results_ECbin_80_20_random.csv")

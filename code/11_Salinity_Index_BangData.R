@@ -30,6 +30,11 @@ soil_data_bang <- rename(soil_data_bang,
                          SWIR1 = b5_BandDN_Landsat, 
                          SWIR2 = b6_BandDN_Landsat)
 
+table(soil_data_bang$Aqua)
+
+# Drop the points that are on mixed aqua cells (Aqua == 2) 
+soil_data_bang <- subset(soil_data_bang, Aqua != 2)
+
 
 # Convert Digital Number (DN) Values to Reflectance values using offset = -0.2 and Scale factor = 2.75e-05 (Reflectance = ((DN * scale_factor) + offset )
 # Link: https://www.usgs.gov/faqs/how-do-i-use-a-scale-factor-landsat-level-2-science-products
@@ -132,3 +137,4 @@ soil_data_bang <- soil_data_bang[, c("Name", "EC", "EC_all", "EC_bin", "EC_cat",
 head(soil_data_bang)
 
 write.csv(soil_data_bang, "data/Bangladesh_Sample_Points/soil_data_bang.csv")
+
