@@ -1,6 +1,9 @@
-# ====================== Stacking Ensemble binary EC random forest ===========================
+# =================== Stacking Ensemble binary EC random forest ==================
 # Note: we still need to discuss if this is the way to go
-# stacking ensemble predicts probabilities rather than zero/one, so we need to re-convert probabilities back to binary EC values (i.e., a threshold is needed)
+# 1. stacking ensemble predicts probabilities rather than zero/one, so we need to re-convert probabilities back to binary EC values (i.e., a threshold is needed)
+# 2. stacking seems to be usually applied to different algorithms (i.e., rf, svm, etc.) rather than like this
+
+# ref: https://cran.r-project.org/web/packages/caretEnsemble/vignettes/caretEnsemble-intro.html
 # ================ 1. Read in packages and data ===============
 pkgs <- c("tidyverse", "ggplot2", "gtsummary", "modelsummary", "mgcv", "randomForest", "datawizard", "nnet", "neuralnet", "glmnet", "caret", "MASS", "dplyr", "scales", "caretEnsemble")
 lapply(pkgs, library, character.only=TRUE)
