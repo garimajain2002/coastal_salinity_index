@@ -442,3 +442,6 @@ print("Final Summary")
 print(summary(results_df))
 
 write.csv(results_df, "outputs/smalldata_model_results_ECbin_all_80_20random.csv")
+
+
+

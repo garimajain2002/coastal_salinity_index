@@ -199,6 +199,10 @@ logistic_model <- train(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_
     F1_Score = metrics_test_rf$F1_Score
   ))
 
+  # View variable importance
+  importance(rf_model)
+  varImpPlot(rf_model)
+  
   ### 4. Random Forest Model with bagging - Lasso ###
   rf_model_lasso <- randomForest(
     EC ~ Green_R + SWIR2_R + NDWI + NDSI1 + NBNIR + NBSWIR2 + NRSWIR1 + NGSWIR1 + NNIRSWIR1, 
@@ -274,7 +278,6 @@ ann_model <- nnet(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R +
     F1_Score = metrics_test_ann_lasso$F1_Score
   ))
 
-  
   
 write.csv(results_df, "outputs/bang_validation_results_ECbin_80_20_random.csv")
 

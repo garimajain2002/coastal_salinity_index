@@ -5,6 +5,7 @@
 
 # ref: https://cran.r-project.org/web/packages/caretEnsemble/vignettes/caretEnsemble-intro.html
 # ================ 1. Read in packages and data ===============
+
 pkgs <- c("tidyverse", "ggplot2", "gtsummary", "modelsummary", "mgcv", "randomForest", "datawizard", "nnet", "neuralnet", "glmnet", "caret", "MASS", "dplyr", "scales", "caretEnsemble")
 lapply(pkgs, library, character.only=TRUE)
 
@@ -123,7 +124,7 @@ print(summary(results_df))
 #write.csv(results_df, "outputs/smalldata_model_results_ECbin_highcorr_80_20strat.csv")
 
 
-# ====== 4. Stack ensemble ======
+# ====== 3. Stack ensemble ======
 rfEnsemble <- caretStack(li_rf, method="rf")
 # test if the stack ensemble model works
 pred <- predict(rfEnsemble, newdata = train_data)
@@ -131,3 +132,4 @@ pred$EC <- train_data$EC
 
 pred_test <- predict(rfEnsemble, newdata = test_data)
 pred_test$EC <- test_data$EC
+
