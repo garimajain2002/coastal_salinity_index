@@ -19,6 +19,7 @@ library(scales) # for scaling data from 0 to 1
 library(caretEnsemble) # For ensemble
 library(kernlab)
 library(naivebayes)
+library(pROC)
 
 # ================ 1. Read data ===============
 getwd()
@@ -110,7 +111,6 @@ table(soil_data_numeric$EC)
   # Check the ensemble object
   MultiStratEnsemble
   #str(MultiStratEnsemble)
- 
   
   # ================ 6. Evaluate the Stack Ensemble ===============
     # Summary of the ensemble model
@@ -119,6 +119,7 @@ table(soil_data_numeric$EC)
   # Predict probabilities
   # Check individual model predictions ("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")
   rf_prob <- predict(li_multi$rf, newdata = test_data, type = "prob")
+  class(li_multi$rf)
   rpart_prob <- predict(li_multi$rpart, newdata = test_data, type = "prob")
   nnet_prob <- predict(li_multi$nnet, newdata = test_data, type = "prob")
   svmRadial_prob <- predict(li_multi$svmRadial, newdata = test_data, type = "prob")
@@ -132,8 +133,22 @@ table(soil_data_numeric$EC)
   ensemble_probabilities <- (rf_prob + rpart_prob + nnet_prob + svmRadial_prob + gbm_prob + naive_bayes_prob + xgb_prob + knn_prob + glmnet_prob) / 9
   
   
+  # determine the best threshold
+  # Create ROC object
+  roc_obj <- roc(test_data$EC, ensemble_probabilities[, "X1"])
+  
+  # Find best threshold using Youden's J statistic
+  best_threshold <- coords(roc_obj, "best", best.method = "youden")
+  
+  # Alternative: find threshold that maximizes specificity + sensitivity
+  best_threshold_alt <- coords(roc_obj, "best", best.method = "closest.topleft")
+  
+  # Print the threshold
+  print(best_threshold)
+ 
+  
   # Predict classes (assume 0.5 threshold)
-  predicted_class <- ifelse(ensemble_probabilities[, "X1"] > ensemble_probabilities[, "X0"], 1, 0)
+  predicted_class <- ifelse(ensemble_probabilities[, "X1"] > best_threshold$threshold, 1, 0)
   
   
   # Calculate metrics
