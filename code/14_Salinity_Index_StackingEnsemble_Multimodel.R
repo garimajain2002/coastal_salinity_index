@@ -94,7 +94,7 @@ table(soil_data_numeric$EC)
       NBR + NBG + NBNIR + NBSWIR1 + NBSWIR2 + NRSWIR1 + NRSWIR2 + NGSWIR1 + NGSWIR2 + NNIRSWIR1 + NNIRSWIR2,
     data = train_data,
     trControl = train_control,
-    methodList = c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")  # add more models here
+    methodList = c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")  
   )
   
   # Check the list of models that they are functioning and not null. If null remove. 
@@ -147,7 +147,7 @@ table(soil_data_numeric$EC)
   print(best_threshold)
  
   
-  # Predict classes (assume 0.5 threshold)
+  # Predict classes 
   predicted_class <- ifelse(ensemble_probabilities[, "X1"] > best_threshold$threshold, 1, 0)
   
   
@@ -158,8 +158,7 @@ table(soil_data_numeric$EC)
   # Print ensemble metrics
   print(ensemble_metrics)
   
-  
-  
+
   
 
 
@@ -169,16 +168,6 @@ table(soil_data_numeric$EC)
   
   
 
-#### Random Sampling  #####
 
-    # Shuffle and split data
-  set.seed(123)
-  shuffled_indices <- sample(seq_len(nrow(soil_data_numeric)))
-  train_size <- floor(0.8 * nrow(soil_data_numeric))
-  train_indices <- shuffled_indices[1:train_size]
-  test_indices <- shuffled_indices[(train_size + 1):nrow(soil_data_numeric)]
-  
-  train_data <- soil_data_numeric[train_indices, ]
-  test_data <- soil_data_numeric[test_indices, ]
   
 
