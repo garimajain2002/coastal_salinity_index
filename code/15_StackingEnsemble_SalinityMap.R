@@ -24,13 +24,24 @@ source("code/14_Salinity_Index_StackingEnsemble_Multimodel.R")
 
 
 # 0. Read relevant landsat multiband image and aquaculture classification image for masking
-landsat_image <- stack("data/tifs/Landsat_Composite_AllBands_2024.tif")
-aqua_image <- stack("data/tifs/Aquaculture_Feb2024.tif") #stack() reads the bands into a multi-layer object
+# 2024
+landsat_image <- stack("data/tifs/2024_JSP_Landsat_Composite_AllBands.tif")
+aqua_image <- stack("data/tifs/2024_JSP_Aquaculture.tif") #stack() reads the bands into a multi-layer object
 
-#!! Sampled area from Jagatsinghpur. Get complete Jagatsinghpur boundary and run the script on that. 
-#!! If aquaculture on that looks more than what it is, take a smaller zone and presnet the case
 
-# Run also for 2013, 2017, 2021 for historical change all using landsat 8
+# # For historical maps replace images with respective years and run the same code below
+# # 2014
+# landsat_image <- stack("data/tifs/2014_JSP_Composite_AllBands.tif")
+# aqua_image <- stack("data/tifs/2014_JSP_Aquaculture.tif")
+# 
+# # 2017
+# landsat_image <- stack("data/tifs/2017_JSP_Composite_AllBands.tif")
+# aqua_image <- stack("data/tifs/2017_JSP_Aquaculture.tif")
+# 
+# # 2021
+# landsat_image <- stack("data/tifs/2021_JSP_Composite_AllBands.tif")
+# aqua_image <- stack("data/tifs/2021_JSP_Aquaculture.tif")
+# 
 
 
 # 1. Prepare landsat multiband image
@@ -132,6 +143,26 @@ length(landsat_df$ID)
 landsat_df <- landsat_df[complete.cases(landsat_df), ]
 length(landsat_df$ID)
 
+# Check df for any Infinite, or NaN values
+colSums(is.na(landsat_df))   # Check for NA values
+sum(is.infinite(as.matrix(landsat_df)))  # Check for Inf values
+sum(is.nan(as.matrix(landsat_df)))  # Check for NaN values
+
+# Find columns containing Inf values
+inf_cols <- sapply(landsat_df, function(x) any(is.infinite(x)))
+names(inf_cols[inf_cols == TRUE])
+
+# If any Red band is 0, SI5 will become Infinite. Omit those rows 
+# Convert Inf values to NA first
+landsat_df <- as.data.frame(lapply(landsat_df, function(x) {
+  if (is.numeric(x)) x[is.infinite(x)] <- NA  # Only apply to numeric columns
+  return(x)
+}))
+# Omit rows with NA values
+landsat_df <- na.omit(landsat_df)
+# Check if Infinite values are addressed
+sum(is.infinite(as.matrix(landsat_df)))  # Should return 0
+
 
 
 # 2. Apply salinity model
@@ -154,49 +185,68 @@ ncell(predicted_raster)
 
 
 # Create ggplot
-ggplot(predicted_df, aes(x = x, y = y, fill = factor(predicted_EC))) +
+predicted_EC<- ggplot(predicted_df, aes(x = x, y = y, fill = factor(predicted_EC))) +
   geom_raster() +
-  scale_fill_manual(values = c("0" = "darkgrey", "1" = "orange")) +
+  scale_fill_manual(values = c("0" = "black", "1" = "white")) +
   theme_minimal() +
   labs(title = "Predicted Electrical Conductivity", 
        fill = "Salinity Class")
 
+plot(predicted_EC)
 
-writeRaster(predicted_raster, "outputs/predicted_EC_map.tif", format = "GTiff", overwrite = TRUE)
+# Change year in filename based on original image selection year
+writeRaster(predicted_raster, "outputs/predicted_EC_raster_2024.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/predicted_EC_map_2024.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
+
 
 
 # 4. Mask Aquaculture ponds for final image 
 aqua_df <- as.data.frame(aqua_image, xy = TRUE)
 
+#Note: Aqua == 2, Dry Aqua == 1, and others == 0 
+unique(values(aqua_image))
 
+# Check df for any Infinite, or NaN values
+colSums(is.na(aqua_df))   # Check for NA values
+sum(is.infinite(as.matrix(aqua_df)))  # Check for Inf values
+sum(is.nan(as.matrix(aqua_df)))  # Check for NaN values
 
 #plot aquaculture 
-ggplot(aqua_df, aes(x = x, y = y, fill = factor(classification))) +
+predicted_Aqua <- ggplot(aqua_df, aes(x = x, y = y, fill = factor(classification))) +
   geom_raster() +
-  scale_fill_manual(values = c("0" = "darkgrey", "1" = "blue")) +
+  scale_fill_manual(values = c("0" = "black", "1" = "black", "2" = "#666666")) +
   theme_minimal() +
-  labs(title = "Aquaculture ponds", 
+  labs(title = "Classified Aquaculture ponds", 
        fill = "Aquaculture ponds")
 
-#Note: Aqua ponds are 0 and non-aqua are 1 in this. 
-aqua_mask_raster <- aqua_image == 0  # Create a binary mask of aquaculture areas
-# Replace predicted EC values with "Aqua" where aquaculture mask is TRUE
-predicted_raster[aqua_mask_raster] <- "Aqua"
+
+aqua_mask_raster <- aqua_image == 2  # Create a binary mask of aquaculture areas
+# Replace predicted EC values with 2 where aquaculture mask is TRUE
+predicted_raster[aqua_mask_raster] <- 2
+values(predicted_raster) <- as.numeric(values(predicted_raster))  # Force numeric raster
+unique(values(predicted_raster))
+
+# # Change year in filename based on original image selection year
+# ggsave("outputs/predicted_Aqua_map_2024.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
 
 
-# 5. Plot and save final salinity maps
+
+# 5. Plot and save final combined salinity and aqua maps
 #convert final predicted raster to df, then ggplot to check 
 final_df <- as.data.frame(predicted_raster, xy = TRUE)
 colnames(final_df) <- c("x", "y", "predicted_EC")
 
-ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_EC))) +
+
+predicted_ECAqua <- ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_EC))) +
   geom_raster() +
-  scale_fill_manual(values = c("0" = "darkgrey", "1" = "orange", "Aqua" = "blue")) +
+  scale_fill_manual(values = c("0" = "black", "1" = "orange", "2" = "blue")) + #get other colours from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
   theme_minimal() +
   labs(title = "Predicted Electrical Conductivity in Aquaculture context", 
        fill = "Salinity Class")
 
-writeRaster(predicted_raster, "outputs/predicted_ECAqua_map_2024.tif", format = "GTiff", overwrite = TRUE)
+plot(predicted_ECAqua)
 
-#!! Check what this error is: Error: Not compatible with requested type: [type=character; target=double].
+# Change year in filename based on original image selection year
+ggsave("outputs/predicted_ECAqua_map_2024.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/predicted_ECAqua_raster_2024.tif", format = "GTiff", overwrite = TRUE)
 
