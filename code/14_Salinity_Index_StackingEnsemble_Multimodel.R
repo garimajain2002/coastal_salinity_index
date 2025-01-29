@@ -149,8 +149,7 @@ table(soil_data_numeric$EC)
   print(best_threshold)
  
   
-  
-  # Predict classes 
+    # Predict classes 
   predicted_class <- ifelse(ensemble_probabilities[, "X1"] > best_threshold$threshold, 1, 0)
   
   
@@ -160,56 +159,6 @@ table(soil_data_numeric$EC)
   
   # Print ensemble metrics
   print(ensemble_metrics)
-
-  
-  # ================ 7. Evaluate the Stack Ensemble on Bangladesh ===============
-
-  soil_data_bang <- read.csv("data/Bangladesh_Sample_Points/soil_data_bang.csv")
-
-  # Predict probabilities
-  # Check individual model predictions ("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")
-  rf_prob <- predict(li_multi$rf, newdata = soil_data_bang, type = "prob")
-  class(li_multi$rf)
-  rpart_prob <- predict(li_multi$rpart, newdata = soil_data_bang, type = "prob")
-  nnet_prob <- predict(li_multi$nnet, newdata = soil_data_bang, type = "prob")
-  svmRadial_prob <- predict(li_multi$svmRadial, newdata = soil_data_bang, type = "prob")
-  gbm_prob <- predict(li_multi$gbm, newdata = soil_data_bang, type = "prob")
-  naive_bayes_prob <- predict(li_multi$naive_bayes, newdata = soil_data_bang, type = "prob")
-  xgb_prob <- predict(li_multi$xgbTree, newdata = soil_data_bang, type = "prob")
-  knn_prob <- predict(li_multi$knn, newdata = soil_data_bang, type = "prob")
-  glmnet_prob <- predict(li_multi$glmnet, newdata = soil_data_bang, type = "prob")
-  
-  # Combine probabilities (average)
-  ensemble_probabilities <- (rf_prob + rpart_prob + nnet_prob + svmRadial_prob + gbm_prob + naive_bayes_prob + xgb_prob + knn_prob + glmnet_prob) / 9
-  
-  
-  # determine the best threshold
-  # Create ROC object
-  roc_obj <- roc(soil_data_bang$EC, ensemble_probabilities[, "X1"])
-  
-  # Find best threshold using Youden's J statistic
-  best_threshold <- coords(roc_obj, "best", best.method = "youden")
-  
-  # Alternative: find threshold that maximizes specificity + sensitivity
-  best_threshold_alt <- coords(roc_obj, "best", best.method = "closest.topleft")
-  
-  # Print the threshold
-  print(best_threshold)
-  
-  
-  # Predict classes 
-  predicted_class <- ifelse(ensemble_probabilities[, "X1"] > best_threshold$threshold, 1, 0)
-  
-  
-  # Calculate metrics
-  ensemble_metrics_bang <- calculate_classification_metrics(soil_data_bang$EC, predicted_class)
-  
-  
-  # Print ensemble metrics
-  print(ensemble_metrics_bang)
-
-    
-#Bangladesh data accuracy is is about 71%. Decent. 
   
 
 

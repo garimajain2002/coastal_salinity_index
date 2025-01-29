@@ -227,7 +227,7 @@ values(predicted_raster) <- as.numeric(values(predicted_raster))  # Force numeri
 unique(values(predicted_raster))
 
 # # Change year in filename based on original image selection year
-# ggsave("outputs/predicted_Aqua_map_2024.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
+ggsave("outputs/predicted_Aqua_map_2024.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
 
 
 
