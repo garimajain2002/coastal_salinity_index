@@ -219,6 +219,7 @@ predicted_Aqua <- ggplot(aqua_df, aes(x = x, y = y, fill = factor(classification
   labs(title = "Classified Aquaculture ponds", 
        fill = "Aquaculture ponds")
 
+plot(predicted_Aqua)
 
 aqua_mask_raster <- aqua_image == 2  # Create a binary mask of aquaculture areas
 # Replace predicted EC values with 2 where aquaculture mask is TRUE
