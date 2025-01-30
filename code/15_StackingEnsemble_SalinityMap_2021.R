@@ -38,9 +38,13 @@ source("code/14_Salinity_Index_StackingEnsemble_Multimodel.R")
 # landsat_image <- stack("data/tifs/2017_JSP_Composite_AllBands.tif")
 # aqua_image <- stack("data/tifs/2017_JSP_Aquaculture.tif")
 # 
-# 2021
+# 2021 JSP
 landsat_image <- stack("data/tifs/2021_JSP_Composite_AllBands.tif")
 aqua_image <- stack("data/tifs/2021_JSP_Aquaculture.tif")
+
+# 2021 Sampling area
+landsat_image <- stack("data/tifs/2021_SA_Composite_AllBands.tif")
+aqua_image <- stack("data/tifs/2021_SA_Aquaculture.tif")
 
 
 
@@ -189,14 +193,14 @@ predicted_EC<- ggplot(predicted_df, aes(x = x, y = y, fill = factor(predicted_EC
   geom_raster() +
   scale_fill_manual(values = c("0" = "black", "1" = "white")) +
   theme_minimal() +
-  labs(title = "Predicted Electrical Conductivity", 
+  labs(title = "Predicted Electrical Conductivity - 2021", 
        fill = "Salinity Class")
 
 plot(predicted_EC)
 
-# Change year in filename based on original image selection year
-writeRaster(predicted_raster, "outputs/predicted_EC_raster_2021.tif", format = "GTiff", overwrite = TRUE)
-ggsave("outputs/predicted_EC_map_2021.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
+# Change filename based on original image selection (JSP/SA)
+writeRaster(predicted_raster, "outputs/SA_predicted_EC_raster_2021.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/SA_predicted_EC_map_2021.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
 
 
 
@@ -214,9 +218,9 @@ sum(is.nan(as.matrix(aqua_df)))  # Check for NaN values
 #plot aquaculture 
 predicted_Aqua <- ggplot(aqua_df, aes(x = x, y = y, fill = factor(classification))) +
   geom_raster() +
-  scale_fill_manual(values = c("0" = "black", "1" = "black", "2" = "#666666")) +
+  scale_fill_manual(values = c("0" = "black", "1" = "black", "2" = "blue")) +
   theme_minimal() +
-  labs(title = "Classified Aquaculture ponds", 
+  labs(title = "Classified Aquaculture ponds - 2021", 
        fill = "Aquaculture ponds")
 
 plot(predicted_Aqua)
@@ -227,9 +231,9 @@ predicted_raster[aqua_mask_raster] <- 2
 values(predicted_raster) <- as.numeric(values(predicted_raster))  # Force numeric raster
 unique(values(predicted_raster))
 
-# Change year in filename based on original image selection year
-ggsave("outputs/predicted_Aqua_map_2021.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
-
+# Change filename based on original image selection (JSP/SA)
+ggsave("outputs/SA_predicted_Aqua_map_2021.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
+writeRaster(aqua_mask_raster, "outputs/SA_predicted_Aqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
 
 
 # 5. Plot and save final combined salinity and aqua maps
@@ -242,12 +246,12 @@ predicted_ECAqua <- ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_E
   geom_raster() +
   scale_fill_manual(values = c("0" = "black", "1" = "orange", "2" = "blue")) + #get other colours from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
   theme_minimal() +
-  labs(title = "Predicted Electrical Conductivity in Aquaculture context", 
+  labs(title = "Predicted Electrical Conductivity in Aquaculture context - 2021", 
        fill = "Salinity Class")
 
 plot(predicted_ECAqua)
 
-# Change year in filename based on original image selection year
-ggsave("outputs/predicted_ECAqua_map_2021.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
-writeRaster(predicted_raster, "outputs/predicted_ECAqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
+# Change filename based on original image selection (JSP/SA)
+ggsave("outputs/SA_predicted_ECAqua_map_2021.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/SA_predicted_ECAqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
 
