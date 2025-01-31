@@ -197,3 +197,164 @@ table(soil_data_numeric$EC)
   # Print ensemble metrics
   print(ensemble_metrics)
   
+  
+  # -----------------------------------------------------------
+  # Calculate and visualise Shapley values for all parameters
+  # ------------------------------------------------------------
+  
+  # Install and load required packages
+  library(iml)
+  library(ggplot2)
+  library(gridExtra)
+  
+  # Function to calculate and visualize feature importance using IML for all models
+  calculate_ensemble_importance <- function(models_list, train_data, test_data) {
+    # Get feature names (excluding EC)
+    feature_names <- names(train_data)[names(train_data) != "EC"]
+    
+    # Initialize lists for storing results
+    predictors <- list()
+    importance_list <- list()
+    feature_effects_list <- list()
+    interaction_list <- list()
+    
+    # Process each model
+    for (model_name in names(models_list)) {
+      print(paste("Processing model:", model_name))
+      
+      # Create predictor function
+      predictor <- Predictor$new(
+        model = models_list[[model_name]], 
+        data = train_data[, feature_names],
+        y = train_data$EC,
+        type = "prob"
+      )
+      
+      # Calculate feature importance
+      importance <- FeatureImp$new(
+        predictor, 
+        loss = "ce",
+        n.repetitions = 5,
+        compare = "ratio"
+      )
+      
+      # Calculate feature effects
+      effects <- FeatureEffects$new(
+        predictor,
+        features = feature_names
+      )
+      
+      # Calculate feature interactions
+      interact <- Interaction$new(predictor)
+      
+      # Store results
+      importance_list[[model_name]] <- importance
+      feature_effects_list[[model_name]] <- effects
+      interaction_list[[model_name]] <- interact
+      predictors[[model_name]] <- predictor
+    }
+    
+    # Aggregate importance scores across all models
+    combined_importance <- data.frame(Feature = feature_names, Importance = 0)
+    for (model_name in names(importance_list)) {
+      imp_scores <- importance_list[[model_name]]$results
+      combined_importance$Importance <- combined_importance$Importance + imp_scores$importance
+    }
+    combined_importance$Importance <- combined_importance$Importance / length(models_list)
+    
+    # Sort by importance
+    combined_importance <- combined_importance[order(-combined_importance$Importance), ]
+    
+    # Create overall importance plot
+    importance_plot <- ggplot(combined_importance, 
+                              aes(x = reorder(Feature, Importance), y = Importance)) +
+      geom_bar(stat = "identity", fill = "steelblue") +
+      coord_flip() +
+      theme_minimal() +
+      labs(title = "Ensemble Feature Importance",
+           x = "Features",
+           y = "Mean Importance")
+    
+    # Create individual model importance plots
+    model_importance_plots <- list()
+    for (model_name in names(importance_list)) {
+      imp_data <- importance_list[[model_name]]$results
+      
+      plot <- ggplot(imp_data, aes(x = reorder(feature, importance), y = importance)) +
+        geom_bar(stat = "identity", fill = "lightblue") +
+        coord_flip() +
+        theme_minimal() +
+        labs(title = paste(model_name, "Feature Importance"),
+             x = "Features",
+             y = "Importance")
+      
+      model_importance_plots[[model_name]] <- plot
+    }
+    
+    # Get top 5 features for detailed analysis
+    top_features <- head(combined_importance$Feature, 5)
+    
+    # Create feature effects plots for top features
+    feature_effects_plots <- list()
+    for (model_name in names(feature_effects_list)) {
+      for (feature in top_features) {
+        plot_data <- feature_effects_list[[model_name]]$results[[feature]]
+        
+        plot <- ggplot(plot_data, aes(x = .borders, y = .value)) +
+          geom_line() +
+          theme_minimal() +
+          labs(title = paste(model_name, "-", feature),
+               x = feature,
+               y = "Effect on prediction")
+        
+        feature_effects_plots[[paste(model_name, feature)]] <- plot
+      }
+    }
+    
+    # Return all results
+    return(list(
+      predictors = predictors,
+      importance = importance_list,
+      feature_effects = feature_effects_list,
+      interactions = interaction_list,
+      combined_importance = combined_importance,
+      importance_plot = importance_plot,
+      model_importance_plots = model_importance_plots,
+      feature_effects_plots = feature_effects_plots
+    ))
+  }
+  
+  # Calculate importance and effects
+  results <- calculate_ensemble_importance(li_multi, train_data, test_data)
+  
+  # Print overall feature importance
+  print("Overall Feature Importance:")
+  print(results$combined_importance)
+  
+  # Plot overall feature importance
+  print(results$importance_plot)
+  
+  # Plot individual model importance plots
+  do.call(grid.arrange, c(results$model_importance_plots, ncol = 2))
+  
+  # Plot feature effects for top 5 features
+  top_5_features <- head(results$combined_importance$Feature, 5)
+  feature_effect_plots <- results$feature_effects_plots[grep(paste(top_5_features, collapse = "|"), 
+                                                             names(results$feature_effects_plots))]
+  do.call(grid.arrange, c(feature_effect_plots, ncol = 2))
+  
+  # Print interaction strengths for each model
+  for (model_name in names(results$interactions)) {
+    print(paste("Interaction strengths for", model_name))
+    print(results$interactions[[model_name]]$results)
+  }
+  
+  # Save results to CSV
+  write.csv(results$combined_importance, "outputs/feature_importance.csv", row.names = FALSE)
+  
+  # Create individual CSV files for each model's importance
+  for (model_name in names(results$importance)) {
+    filename <- paste0("importance_", model_name, ".csv")
+    write.csv(results$importance[[model_name]]$results, filename, row.names = FALSE)
+  }
+  
