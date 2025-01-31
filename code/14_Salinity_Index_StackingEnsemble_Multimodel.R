@@ -83,7 +83,7 @@ table(soil_data_numeric$EC)
   
   # Define training control
   train_control <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = TRUE)
-  
+  # Using cv with 5 fold here. Could also test method = "LOOCV" (Leave-One-Out Cross-Validation) 
   
   # ================ 4. Train models ===============
   
@@ -99,6 +99,40 @@ table(soil_data_numeric$EC)
   
   # Check the list of models that they are functioning and not null. If null remove. 
   li_multi
+  
+  # Model/Feature selection
+  # Get performance metrics for all models
+  model_performances <- resamples(li_multi)
+  summary(model_performances)
+  results <- summary(model_performances)
+  
+  accuracies <- unlist(lapply(li_multi, function(model) {
+    max(model$results$Accuracy)
+  }))
+  
+  # Assess detailed statistics
+  performance_stats <- summary(model_performances)$statistics
+  
+  # Use statistical methods to set a threshold
+  # Method 1: Mean threshold
+  mean_threshold <- mean(accuracies)
+  
+  # Method 2: Median threshold
+  median_threshold <- median(accuracies)
+  
+  # Method 3: Mean minus one SD
+  sd_threshold <- mean(accuracies) - sd(accuracies)
+  
+  selected_models <- names(accuracies[accuracies > mean_threshold])
+  
+  print(paste("Mean accuracy:", round(mean_threshold, 4)))
+  print(paste("Models above threshold:", paste(selected_models, collapse=", ")))
+  
+  
+  # Visual inspection to find  anatural breakpoint
+  # Plot model performances
+  model_comparison <- dotplot(model_performances)  
+  plot(model_comparison )
   
   # ================ 5. Create the stack ensemble ===============
   # Define stack ensemble
