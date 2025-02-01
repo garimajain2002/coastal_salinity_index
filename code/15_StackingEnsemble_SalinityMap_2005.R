@@ -12,7 +12,7 @@ library(ggplot2)
 getwd()
 
 source("code/Funcs.R")
-source("code/14_Salinity_Index_StackingEnsemble_Multimodel.R")
+MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
 
 # Steps: 
 # 0. Read relevant landsat multiband and aquaculture classification images
@@ -34,9 +34,11 @@ source("code/14_Salinity_Index_StackingEnsemble_Multimodel.R")
 landsat_image <- stack("data/tifs/2005_JSP_Composite_AllBands.tif")
 aqua_image <- stack("data/tifs/2005_JSP_Aquaculture.tif")
 
-# 2005 Sampling area
-landsat_image <- stack("data/tifs/2005_SA_Composite_AllBands.tif")
-aqua_image <- stack("data/tifs/2005_SA_Aquaculture.tif")
+# #OR
+# 
+# # 2005 Sampling area
+# landsat_image <- stack("data/tifs/2005_SA_Composite_AllBands.tif")
+# aqua_image <- stack("data/tifs/2005_SA_Aquaculture.tif")
 
 
 
@@ -163,7 +165,7 @@ sum(is.infinite(as.matrix(landsat_df)))  # Should return 0
 
 # 2. Apply salinity model
 predictions <- predict(MultiStratEnsemble, newdata = landsat_df)
-landsat_df$predicted_EC <- ifelse(predictions[, "X1"] > best_threshold$threshold, 1, 0)
+landsat_df$predicted_EC <- ifelse(predictions[, "X1"] > best_threshold, 1, 0)
 
 
 # 3. Map predictions back to raster
@@ -191,8 +193,8 @@ predicted_EC<- ggplot(predicted_df, aes(x = x, y = y, fill = factor(predicted_EC
 plot(predicted_EC)
 
 # Change filename based on original image selection (JSP/SA)
-writeRaster(predicted_raster, "outputs/SA_predicted_EC_raster_2005.tif", format = "GTiff", overwrite = TRUE)
-ggsave("outputs/SA_predicted_EC_map_2005.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/JSP_predicted_EC_raster_2005.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/JSP_predicted_EC_map_2005.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
 
 
 
@@ -224,8 +226,8 @@ values(predicted_raster) <- as.numeric(values(predicted_raster))  # Force numeri
 unique(values(predicted_raster))
 
 # Change filename based on original image selection (JSP/SA)
-ggsave("outputs/SA_predicted_Aqua_map_2005.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
-writeRaster(aqua_mask_raster, "outputs/SA_predicted_Aqua_raster_2005.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/JSP_predicted_Aqua_map_2005.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
+writeRaster(aqua_mask_raster, "outputs/JSP_predicted_Aqua_raster_2005.tif", format = "GTiff", overwrite = TRUE)
 
 
 # 5. Plot and save final combined salinity and aqua maps
@@ -244,6 +246,6 @@ predicted_ECAqua <- ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_E
 plot(predicted_ECAqua)
 
 # Change filename based on original image selection (JSP/SA)
-ggsave("outputs/SA_predicted_ECAqua_map_2005.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
-writeRaster(predicted_raster, "outputs/SA_predicted_ECAqua_raster_2005.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/JSP_predicted_ECAqua_map_2005.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/JSP_predicted_ECAqua_raster_2005.tif", format = "GTiff", overwrite = TRUE)
 
