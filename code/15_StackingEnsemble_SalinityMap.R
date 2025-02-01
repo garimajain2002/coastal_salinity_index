@@ -1,5 +1,5 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~~~~~~~~~~ Salinity Map using Stacked Ensemble Model ~~~~~~~~~~~~#
+#~~~~~~~~~~~ 2024 Salinity Map using Stacked Ensemble Model ~~~~~~~~~~~~#
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 library(raster)
@@ -11,8 +11,8 @@ library(ggplot2)
 # ================ 1. Read data ===============
 getwd()
 
-source("code/Funcs.R")
-source("code/14_Salinity_Index_StackingEnsemble_Multimodel.R")
+MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
+best_threshold = 0.85 
 
 # Steps: 
 # 0. Read relevant landsat multiband and aquaculture classification images
@@ -28,24 +28,10 @@ source("code/14_Salinity_Index_StackingEnsemble_Multimodel.R")
 landsat_image <- stack("data/tifs/2024_JSP_Landsat_Composite_AllBands.tif")
 aqua_image <- stack("data/tifs/2024_JSP_Aquaculture.tif") #stack() reads the bands into a multi-layer object
 
-#2024 Sampling area
-landsat_image <- stack("data/tifs/2024_SA_Landsat_Composite_AllBands.tif")
-aqua_image <- stack("data/tifs/2024_SA_Aquaculture.tif") #stack() reads the bands into a multi-layer object
+# #2024 Sampling area
+# landsat_image <- stack("data/tifs/2024_SA_Landsat_Composite_AllBands.tif")
+# aqua_image <- stack("data/tifs/2024_SA_Aquaculture.tif") #stack() reads the bands into a multi-layer object
 
-
-# # For historical maps replace images with respective years and run the same code below
-# # 2014
-# landsat_image <- stack("data/tifs/2014_JSP_Composite_AllBands.tif")
-# aqua_image <- stack("data/tifs/2014_JSP_Aquaculture.tif")
-# 
-# # 2017
-# landsat_image <- stack("data/tifs/2017_JSP_Composite_AllBands.tif")
-# aqua_image <- stack("data/tifs/2017_JSP_Aquaculture.tif")
-# 
-# # 2021
-# landsat_image <- stack("data/tifs/2021_JSP_Composite_AllBands.tif")
-# aqua_image <- stack("data/tifs/2021_JSP_Aquaculture.tif")
-# 
 
 
 # 1. Prepare landsat multiband image
@@ -171,7 +157,7 @@ sum(is.infinite(as.matrix(landsat_df)))  # Should return 0
 
 # 2. Apply salinity model
 predictions <- predict(MultiStratEnsemble, newdata = landsat_df)
-landsat_df$predicted_EC <- ifelse(predictions[, "X1"] > best_threshold$threshold, 1, 0)
+landsat_df$predicted_EC <- ifelse(predictions[, "X1"] > best_threshold, 1, 0)
 
 
 # 3. Map predictions back to raster

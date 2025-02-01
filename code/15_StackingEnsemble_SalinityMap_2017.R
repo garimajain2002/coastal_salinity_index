@@ -199,8 +199,8 @@ predicted_EC<- ggplot(predicted_df, aes(x = x, y = y, fill = factor(predicted_EC
 plot(predicted_EC)
 
 # Change filename based on original image selection (JSP/SA)
-# writeRaster(predicted_raster, "outputs/JSP_predicted_EC_raster_2017.tif", format = "GTiff", overwrite = TRUE)
-# ggsave("outputs/JSP_predicted_EC_map_2017.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/JSP_predicted_EC_raster_2017.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/JSP_predicted_EC_map_2017.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
 
 
 
@@ -232,7 +232,9 @@ values(predicted_raster) <- as.numeric(values(predicted_raster))  # Force numeri
 unique(values(predicted_raster))
 
 # Change filename based on original image selection (JSP/SA)
-# ggsave("outputs/JSP_predicted_Aqua_map_2017.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
+ggsave("outputs/JSP_predicted_Aqua_map_2017.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
+writeRaster(aqua_mask_raster, "outputs/JSP_predicted_Aqua_raster_2017.tif", format = "GTiff", overwrite = TRUE)
+
 
 
 
@@ -252,6 +254,6 @@ predicted_ECAqua <- ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_E
 plot(predicted_ECAqua)
 
 # Change filename based on original image selection (year)JSP/SA)
-# ggsave("outputs/JSP_predicted_ECAqua_map_2017.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
-# writeRaster(predicted_raster, "outputs/JSP_predicted_ECAqua_raster_2017.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/JSP_predicted_ECAqua_map_2017.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/JSP_predicted_ECAqua_raster_2017.tif", format = "GTiff", overwrite = TRUE)
 
