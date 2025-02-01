@@ -11,8 +11,8 @@ library(ggplot2)
 # ================ 1. Read data ===============
 getwd()
 
-source("code/Funcs.R")
 MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
+best_threshold = 0.85 
 
 # Steps: 
 # 0. Read relevant landsat multiband and aquaculture classification images

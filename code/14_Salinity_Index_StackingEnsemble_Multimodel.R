@@ -161,26 +161,47 @@ table(soil_data_numeric$EC)
   # summary(MultiStratEnsemble)
   
   
-  train_preds <- predict(MultiStratEnsemble, newdata=train_data)
+  train_preds <- predict(MultiStratEnsemble, newdata = train_data)
+  test_preds <- predict(MultiStratEnsemble, newdata = test_data)
   
-  test_preds <- predict(MultiStratEnsemble, newdata=test_data)
+  train_probs <- as.numeric(unlist(train_preds[,"X1"]))
+  test_probs <- as.numeric(unlist(test_preds[,"X1"]))
   
-  # Determine the best threshold
-  # # Create ROC object based on train data
-  # roc_obj <- roc(train_data$EC, train_preds[, "X1"])
-  # # # Create ROC object based on test data
-  # # roc_obj <- roc(test_data$EC, test_preds[, "X1"])
-  # 
-  # 
-  # # Find best threshold using Youden's J statistic
-  # best_threshold <- coords(roc_obj, "best", best.method = "youden")
-  # 
+    # Determine the best threshold
+  # # Create ROC object 
+  train_roc <- roc(train_data$EC, train_probs)
+  test_roc <- roc(test_data$EC, test_probs)
+  
+  
+  # Find best threshold using Youden's J statistic
+  best_threshold_train <- coords(train_roc, "best", best.method = "youden")
+  best_threshold_test <- coords(test_roc, "best", best.method = "youden")
+  
+  # Calculate AUC values
+  train_auc <- auc(train_roc)
+  test_auc <- auc(test_roc)
+  
+  print(paste("Training AUC:", round(train_auc, 3)))
+  print(paste("Testing AUC:", round(test_auc, 3)))
+  
+  plot(train_roc, col = "blue", main = "ROC Curves")
+  lines(test_roc, col = "red")
+  legend("bottomright", legend = c("Training", "Testing"), 
+         col = c("blue", "red"), lwd = 2)
+  
+  
   # # Alternative: find threshold that maximizes specificity + sensitivity
   # best_threshold_alt <- coords(roc_obj, "best", best.method = "closest.topleft")
-  # 
+  # # 
   #   # Defaul threshold
   # best_threshold_def <- 0.5
 
+  best_threshold = best_threshold_test$threshold 
+    
+  print(best_threshold)
+  
+  
+  # OR 
   
   
   # Find a threshold that gives the least diff between train and test accuracies. 
@@ -216,6 +237,7 @@ table(soil_data_numeric$EC)
   print(best_threshold)
   
   
+  
   # Predict classes 
   # train_predicted_class <- ifelse(train_preds[, "X1"] > best_threshold$threshold, 1, 0)
   # test_predicted_class <- ifelse(test_preds[, "X1"] > best_threshold$threshold, 1, 0)
@@ -233,7 +255,7 @@ table(soil_data_numeric$EC)
   print(test_ensemble_metrics)
   
   
-  saveRDS(MultiStratEnsemble, "ensemble_2501.rds")
+  saveRDS(MultiStratEnsemble, "ensemble.rds")
   
 
 

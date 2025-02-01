@@ -11,8 +11,8 @@ library(ggplot2)
 # ================ 1. Read data ===============
 getwd()
 
-source("code/Funcs.R")
 MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
+best_threshold = 0.85 
 
 # Steps: 
 # 0. Read relevant landsat multiband and aquaculture classification images
@@ -240,7 +240,7 @@ predicted_ECAqua <- ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_E
   geom_raster() +
   scale_fill_manual(values = c("0" = "black", "1" = "orange", "2" = "blue")) + #get other colours from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
   theme_minimal() +
-  labs(title = "Predicted Electrical Conductivity in Aquaculture context - 2000", 
+  labs(title = "Predicted Electrical Conductivity in Aquaculture context - 2001", 
        fill = "Salinity Class")
 
 plot(predicted_ECAqua)
