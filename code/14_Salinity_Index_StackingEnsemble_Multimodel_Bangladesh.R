@@ -209,7 +209,7 @@ table(soil_data_numeric$EC)
   print(ensemble_metrics_bang)
 
     
-#Bangladesh data accuracy is is about 71%.  
+#Bangladesh data accuracy is is about 71%. 
   
 
 

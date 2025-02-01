@@ -25,6 +25,7 @@ library(pROC)
 getwd()
 
 source("code/Funcs.R")
+MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
 
 soil_data <- read.csv("data/soil_data_allindices.csv")
 head(soil_data)
@@ -32,7 +33,7 @@ head(soil_data)
 
 # ================ 2. Prepare data ===============
 
-# Select the type of EC to be used here 
+# Select the type of EC to be used here
 soil_data$EC <- soil_data$EC_bin
 head(soil_data)
 
@@ -59,302 +60,242 @@ table(soil_data_numeric$EC)
   train_indices <- createDataPartition(soil_data_numeric$EC, p = 0.8, list = FALSE)
   train_data <- soil_data_numeric[train_indices, ]
   test_data <- soil_data_numeric[-train_indices, ]
+
   
-  # Convert EC into Factor (0 and 1 to X0 and X1)
-  levels(train_data$EC) <- make.names(levels(train_data$EC))
-  levels(test_data$EC) <- make.names(levels(test_data$EC))
-  train_data$EC <- factor(train_data$EC, levels = c("X0", "X1"))
-  test_data$EC <- factor(test_data$EC, levels = c("X0", "X1"))
-  
-  # Debug: Check class balance
-  print(paste("Train class distribution"))
-  print(table(train_data$EC))
-  print(paste("Test class distribution"))
-  print(table(test_data$EC))
-  
-  # Check and remove near-zero variance predictors
-  nzv <- nearZeroVar(train_data, saveMetrics = TRUE)
-  if (any(nzv$nzv)) {
-    print("Near-zero variance predictors found:")
-    print(nzv[nzv$nzv, ])
-    train_data <- train_data[, !nzv$nzv]
-    test_data <- test_data[, !nzv$nzv]
-  }
-  
-  # Define training control
-  train_control <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = TRUE)
-  # Using cv with 5 fold here. Could also test method = "LOOCV" (Leave-One-Out Cross-Validation) 
-  
-  
-  # ================ 4. Train models ===============
-  
-  # Train multiple models using caretList
-  li_multi <- caretList(
-    EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-      NDVI + NDWI + NDSI1 + NDSI2 + SI1 + SI2 + SI3 + SI4 + SI5 + SAVI + VSSI + 
-      NBR + NBG + NBNIR + NBSWIR1 + NBSWIR2 + NRSWIR1 + NRSWIR2 + NGSWIR1 + NGSWIR2 + NNIRSWIR1 + NNIRSWIR2,
-    data = train_data,
-    trControl = train_control,
-    methodList = c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")  
-  )
-  
-  # Check the list of models that they are functioning and not null. If null remove. 
-  li_multi
-  
-  # Model/Feature selection
-  # Get performance metrics for all models
-  model_performances <- resamples(li_multi)
-  results <- summary(model_performances)
-  
-  print(results)
-  
-  accuracies <- unlist(lapply(li_multi, function(model) {
-    max(model$results$Accuracy)
-  }))
-  
-  # Assess detailed statistics
-  performance_stats <- summary(model_performances)$statistics
-  
-  # Use statistical methods to set a threshold
-  # Method 1: Mean threshold
-  mean_threshold <- mean(accuracies)
-  
-  # Method 2: Median threshold
-  median_threshold <- median(accuracies)
-  
-  # Method 3: Mean minus one SD
-  sd_threshold <- mean(accuracies) - sd(accuracies)
-  
-  selected_models <- names(accuracies[accuracies > mean_threshold])
-  
-  print(paste("Mean accuracy:", round(mean_threshold, 4)))
-  print(paste("Models above threshold:", paste(selected_models, collapse=", ")))
-  
-  
-  # Visual inspection to find  a natural breakpoint?
-  # Plot model performances
-  model_comparison <- dotplot(model_performances)  
-  plot(model_comparison )
-  
-  
-  # ================ 5. Create the stack ensemble ===============
-  # Define stack ensemble
-  MultiStratEnsemble <- caretStack(
-    li_multi,
-    method = "glm",  # Stacking method
-    metric = "Accuracy",
-    trControl = trainControl(method = "cv", number = 5, classProbs = TRUE)
-  )
-  
-  # # Check the ensemble object
-  # MultiStratEnsemble
-  # #str(MultiStratEnsemble)
-  
-  
-  # ================ 6. Evaluate the Stack Ensemble ===============
-  #   # Summary of the ensemble model
-  # summary(MultiStratEnsemble)
-  
-  # Predict probabilities
-  # Check individual model predictions ("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")
-  rf_prob <- predict(li_multi$rf, newdata = test_data, type = "prob")
-  class(li_multi$rf)
-  rpart_prob <- predict(li_multi$rpart, newdata = test_data, type = "prob")
-  nnet_prob <- predict(li_multi$nnet, newdata = test_data, type = "prob")
-  svmRadial_prob <- predict(li_multi$svmRadial, newdata = test_data, type = "prob")
-  gbm_prob <- predict(li_multi$gbm, newdata = test_data, type = "prob")
-  naive_bayes_prob <- predict(li_multi$naive_bayes, newdata = test_data, type = "prob")
-  xgb_prob <- predict(li_multi$xgbTree, newdata = test_data, type = "prob")
-  knn_prob <- predict(li_multi$knn, newdata = test_data, type = "prob")
-  glmnet_prob <- predict(li_multi$glmnet, newdata = test_data, type = "prob")
- 
-  # Combine probabilities (average)
-  ensemble_probabilities <- (rf_prob + rpart_prob + nnet_prob + svmRadial_prob + gbm_prob + naive_bayes_prob + xgb_prob + knn_prob + glmnet_prob) / 9
-  
-  
-  # determine the best threshold
-  # Create ROC object
-  roc_obj <- roc(test_data$EC, ensemble_probabilities[, "X1"])
-  
-  # Find best threshold using Youden's J statistic
-  best_threshold <- coords(roc_obj, "best", best.method = "youden")
-  
-  # Alternative: find threshold that maximizes specificity + sensitivity
-  best_threshold_alt <- coords(roc_obj, "best", best.method = "closest.topleft")
-  
-  # Print the threshold
-  print(best_threshold)
- 
-  
-    # Predict classes 
-  predicted_class <- ifelse(ensemble_probabilities[, "X1"] > best_threshold$threshold, 1, 0)
-  
-  
-  # Calculate metrics
-  ensemble_metrics <- calculate_classification_metrics(test_data$EC, predicted_class)
-  
-  
-  # Print ensemble metrics
-  print(ensemble_metrics)
+#   # Convert EC into Factor (0 and 1 to X0 and X1)
+#   levels(train_data$EC) <- make.names(levels(train_data$EC))
+#   levels(test_data$EC) <- make.names(levels(test_data$EC))
+#   train_data$EC <- factor(train_data$EC, levels = c("X0", "X1"))
+#   test_data$EC <- factor(test_data$EC, levels = c("X0", "X1"))
+#   
+#   # Debug: Check class balance
+#   print(paste("Train class distribution"))
+#   print(table(train_data$EC))
+#   print(paste("Test class distribution"))
+#   print(table(test_data$EC))
+#   
+#   # Check and remove near-zero variance predictors
+#   nzv <- nearZeroVar(train_data, saveMetrics = TRUE)
+#   if (any(nzv$nzv)) {
+#     print("Near-zero variance predictors found:")
+#     print(nzv[nzv$nzv, ])
+#     train_data <- train_data[, !nzv$nzv]
+#     test_data <- test_data[, !nzv$nzv]
+#   }
+#   
+#   # Define training control
+#   train_control <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = TRUE)
+#   # Using cv with 5 fold here. Could also test method = "LOOCV" (Leave-One-Out Cross-Validation) 
+#   
+#   
+#   # ================ 4. Train models ===============
+#   
+#   # Train multiple models using caretList
+#   li_multi <- caretList(
+#     EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
+#       NDVI + NDWI + NDSI1 + NDSI2 + SI1 + SI2 + SI3 + SI4 + SI5 + SAVI + VSSI + 
+#       NBR + NBG + NBNIR + NBSWIR1 + NBSWIR2 + NRSWIR1 + NRSWIR2 + NGSWIR1 + NGSWIR2 + NNIRSWIR1 + NNIRSWIR2,
+#     data = train_data,
+#     trControl = train_control,
+#     methodList = c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")  
+#   )
+#   
+#   # Check the list of models that they are functioning and not null. If null remove. 
+#   li_multi
+#   
+#   # Model/Feature selection
+#   # Get performance metrics for all models
+#   model_performances <- resamples(li_multi)
+#   results <- summary(model_performances)
+#   
+#   print(results)
+#   
+#   accuracies <- unlist(lapply(li_multi, function(model) {
+#     max(model$results$Accuracy)
+#   }))
+#   
+#   # Assess detailed statistics
+#   performance_stats <- summary(model_performances)$statistics
+#   
+#   # Use statistical methods to set a threshold
+#   # Method 1: Mean threshold
+#   mean_threshold <- mean(accuracies)
+#   
+#   # Method 2: Median threshold
+#   median_threshold <- median(accuracies)
+#   
+#   # Method 3: Mean minus one SD
+#   sd_threshold <- mean(accuracies) - sd(accuracies)
+#   
+#   selected_models <- names(accuracies[accuracies > mean_threshold])
+#   
+#   print(paste("Mean accuracy:", round(mean_threshold, 4)))
+#   print(paste("Models above threshold:", paste(selected_models, collapse=", ")))
+#   
+#   
+#   # Visual inspection to find  a natural breakpoint?
+#   # Plot model performances
+#   model_comparison <- dotplot(model_performances)  
+#   plot(model_comparison )
+#   
+#   
+#   # ================ 5. Create the stack ensemble ===============
+#   # Define stack ensemble
+#   MultiStratEnsemble <- caretStack(
+#     li_multi,
+#     method = "glm",  # Stacking method
+#     metric = "Accuracy",
+#     trControl = trainControl(method = "cv", number = 5, classProbs = TRUE)
+#   )
+#   
+#   # # Check the ensemble object
+#   # MultiStratEnsemble
+#   # #str(MultiStratEnsemble)
+#   
+#   
+#   # ================ 6. Evaluate the Stack Ensemble ===============
+#   #   # Summary of the ensemble model
+#   # summary(MultiStratEnsemble)
+#   
+#   # Predict probabilities
+#   # Check individual model predictions ("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")
+#   rf_prob <- predict(li_multi$rf, newdata = test_data, type = "prob")
+#   class(li_multi$rf)
+#   rpart_prob <- predict(li_multi$rpart, newdata = test_data, type = "prob")
+#   nnet_prob <- predict(li_multi$nnet, newdata = test_data, type = "prob")
+#   svmRadial_prob <- predict(li_multi$svmRadial, newdata = test_data, type = "prob")
+#   gbm_prob <- predict(li_multi$gbm, newdata = test_data, type = "prob")
+#   naive_bayes_prob <- predict(li_multi$naive_bayes, newdata = test_data, type = "prob")
+#   xgb_prob <- predict(li_multi$xgbTree, newdata = test_data, type = "prob")
+#   knn_prob <- predict(li_multi$knn, newdata = test_data, type = "prob")
+#   glmnet_prob <- predict(li_multi$glmnet, newdata = test_data, type = "prob")
+#  
+#   # Combine probabilities (average)
+#   ensemble_probabilities <- (rf_prob + rpart_prob + nnet_prob + svmRadial_prob + gbm_prob + naive_bayes_prob + xgb_prob + knn_prob + glmnet_prob) / 9
+#   
+#   
+#   # determine the best threshold
+#   # Create ROC object
+#   roc_obj <- roc(test_data$EC, ensemble_probabilities[, "X1"])
+#   
+#   # Find best threshold using Youden's J statistic
+#   best_threshold <- coords(roc_obj, "best", best.method = "youden")
+#   
+#   # Alternative: find threshold that maximizes specificity + sensitivity
+#   best_threshold_alt <- coords(roc_obj, "best", best.method = "closest.topleft")
+#   
+#   # Print the threshold
+#   print(best_threshold)
+#  
+#   
+#     # Predict classes 
+#   predicted_class <- ifelse(ensemble_probabilities[, "X1"] > best_threshold$threshold, 1, 0)
+#   
+#   
+#   # Calculate metrics
+#   ensemble_metrics <- calculate_classification_metrics(test_data$EC, predicted_class)
+#   
+#   
+#   # Print ensemble metrics
+#   print(ensemble_metrics)
   
   
   # -----------------------------------------------------------
   # Calculate and visualise Shapley values for all parameters
   # ------------------------------------------------------------
   
-  # Install and load required packages
   library(iml)
   library(ggplot2)
-  library(gridExtra)
+  library(tidyverse)
   
-  # Function to calculate and visualize feature importance using IML for all models
-  calculate_ensemble_importance <- function(models_list, train_data, test_data) {
-    # Get feature names (excluding EC)
-    feature_names <- names(train_data)[names(train_data) != "EC"]
+  # Define the custom prediction wrapper
+  predict_wrapper <- function(model, newdata) {
+    preds <- predict(model, newdata = newdata)
+    # Convert to numeric matrix with class probabilities
+    return(as.matrix(preds))
+  }
+  
+  # Function to calculate Shapley values
+  calculate_shapley <- function(model, train_data, test_data, n_samples = 50) {
+    # Create predictor object
+    predictor <- Predictor$new(
+      model = model,
+      data = train_data[, -which(names(train_data) == "EC")],  # Remove target variable
+      y = train_data$EC,
+      predict.fun = predict_wrapper
+    )
     
-    # Initialize lists for storing results
-    predictors <- list()
-    importance_list <- list()
-    feature_effects_list <- list()
-    interaction_list <- list()
+    results <- list()
+    feature_names <- setdiff(names(train_data), "EC")
     
-    # Process each model
-    for (model_name in names(models_list)) {
-      print(paste("Processing model:", model_name))
+    # Calculate Shapley values for each test instance
+    for(i in 1:nrow(test_data)) {
+      cat(sprintf("Computing Shapley values for instance %d of %d\n", i, nrow(test_data)))
       
-      # Create predictor function
-      predictor <- Predictor$new(
-        model = models_list[[model_name]], 
-        data = train_data[, feature_names],
-        y = train_data$EC,
-        type = "prob"
+      shapley <- Shapley$new(
+        predictor = predictor,
+        x.interest = test_data[i, feature_names],
+        sample.size = n_samples
       )
       
-      # Calculate feature importance
-      importance <- FeatureImp$new(
-        predictor, 
-        loss = "ce",
-        n.repetitions = 5,
-        compare = "ratio"
-      )
-      
-      # Calculate feature effects
-      effects <- FeatureEffects$new(
-        predictor,
-        features = feature_names
-      )
-      
-      # Calculate feature interactions
-      interact <- Interaction$new(predictor)
-      
-      # Store results
-      importance_list[[model_name]] <- importance
-      feature_effects_list[[model_name]] <- effects
-      interaction_list[[model_name]] <- interact
-      predictors[[model_name]] <- predictor
+      results[[i]] <- shapley$results
     }
     
-    # Aggregate importance scores across all models
-    combined_importance <- data.frame(Feature = feature_names, Importance = 0)
-    for (model_name in names(importance_list)) {
-      imp_scores <- importance_list[[model_name]]$results
-      combined_importance$Importance <- combined_importance$Importance + imp_scores$importance
-    }
-    combined_importance$Importance <- combined_importance$Importance / length(models_list)
+    return(results)
+  }
+  
+  # Function to aggregate and analyze Shapley values
+  analyze_shapley_results <- function(shapley_results) {
+    # Combine all results into a single dataframe
+    all_results <- do.call(rbind, shapley_results)
     
-    # Sort by importance
-    combined_importance <- combined_importance[order(-combined_importance$Importance), ]
+    # Calculate average absolute Shapley values for each feature
+    feature_importance <- all_results %>%
+      group_by(feature) %>%
+      summarise(
+        mean_abs_effect = mean(abs(phi)),
+        sd_effect = sd(phi)
+      ) %>%
+      arrange(desc(mean_abs_effect))
     
-    # Create overall importance plot
-    importance_plot <- ggplot(combined_importance, 
-                              aes(x = reorder(Feature, Importance), y = Importance)) +
+    return(feature_importance)
+  }
+  
+  # Function to plot Shapley results
+  plot_shapley_importance <- function(feature_importance) {
+    ggplot(feature_importance, aes(x = reorder(feature, mean_abs_effect), y = mean_abs_effect)) +
       geom_bar(stat = "identity", fill = "steelblue") +
+      geom_errorbar(aes(ymin = mean_abs_effect - sd_effect, 
+                        ymax = mean_abs_effect + sd_effect), 
+                    width = 0.2) +
       coord_flip() +
       theme_minimal() +
-      labs(title = "Ensemble Feature Importance",
-           x = "Features",
-           y = "Mean Importance")
-    
-    # Create individual model importance plots
-    model_importance_plots <- list()
-    for (model_name in names(importance_list)) {
-      imp_data <- importance_list[[model_name]]$results
-      
-      plot <- ggplot(imp_data, aes(x = reorder(feature, importance), y = importance)) +
-        geom_bar(stat = "identity", fill = "lightblue") +
-        coord_flip() +
-        theme_minimal() +
-        labs(title = paste(model_name, "Feature Importance"),
-             x = "Features",
-             y = "Importance")
-      
-      model_importance_plots[[model_name]] <- plot
-    }
-    
-    # Get top 5 features for detailed analysis
-    top_features <- head(combined_importance$Feature, 5)
-    
-    # Create feature effects plots for top features
-    feature_effects_plots <- list()
-    for (model_name in names(feature_effects_list)) {
-      for (feature in top_features) {
-        plot_data <- feature_effects_list[[model_name]]$results[[feature]]
-        
-        plot <- ggplot(plot_data, aes(x = .borders, y = .value)) +
-          geom_line() +
-          theme_minimal() +
-          labs(title = paste(model_name, "-", feature),
-               x = feature,
-               y = "Effect on prediction")
-        
-        feature_effects_plots[[paste(model_name, feature)]] <- plot
-      }
-    }
-    
-    # Return all results
-    return(list(
-      predictors = predictors,
-      importance = importance_list,
-      feature_effects = feature_effects_list,
-      interactions = interaction_list,
-      combined_importance = combined_importance,
-      importance_plot = importance_plot,
-      model_importance_plots = model_importance_plots,
-      feature_effects_plots = feature_effects_plots
-    ))
+      labs(
+        title = "Feature Importance Based on Shapley Values",
+        x = "Features",
+        y = "Mean Absolute Shapley Value"
+      )
   }
   
-  # Calculate importance and effects
-  results <- calculate_ensemble_importance(li_multi, train_data, test_data)
+  # Execute the analysis
+  # 1. Calculate Shapley values
+  shapley_results <- calculate_shapley(MultiStratEnsemble, train_data, test_data, n_samples = 50)
   
-  # Print overall feature importance
-  print("Overall Feature Importance:")
-  print(results$combined_importance)
+  # 2. Analyze results
+  feature_importance <- analyze_shapley_results(shapley_results)
+  print(feature_importance)
   
-  # Plot overall feature importance
-  print(results$importance_plot)
+  # 3. Plot results
+  importance_plot <- plot_shapley_importance(feature_importance)
+  print(importance_plot)
   
-  # Plot individual model importance plots
-  do.call(grid.arrange, c(results$model_importance_plots, ncol = 2))
+  # 4. Save results if needed
+  write.csv(feature_importance, "outputs/shapley_feature_importance.csv", row.names = FALSE)
+  ggsave("outputs/shapley_importance_plot.png", importance_plot, width = 10, height = 8)
   
-  # Plot feature effects for top 5 features
-  top_5_features <- head(results$combined_importance$Feature, 5)
-  feature_effect_plots <- results$feature_effects_plots[grep(paste(top_5_features, collapse = "|"), 
-                                                             names(results$feature_effects_plots))]
-  do.call(grid.arrange, c(feature_effect_plots, ncol = 2))
-  
-  # Print interaction strengths for each model
-  for (model_name in names(results$interactions)) {
-    print(paste("Interaction strengths for", model_name))
-    print(results$interactions[[model_name]]$results)
-  }
-  
-  # Save results to CSV
-  write.csv(results$combined_importance, "outputs/feature_importance.csv", row.names = FALSE)
-  
-  # Create individual CSV files for each model's importance
-  for (model_name in names(results$importance)) {
-    filename <- paste0("importance_", model_name, ".csv")
-    write.csv(results$importance[[model_name]]$results, filename, row.names = FALSE)
-  }
-  
+  # If you want to examine individual predictions:
+  example_instance <- 1  # Change this to look at different test instances
+  print("Shapley values for a single prediction:")
+  print(shapley_results[[example_instance]] %>% arrange(desc(abs(phi))))
+
+    

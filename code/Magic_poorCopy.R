@@ -6,12 +6,12 @@ library(tidyverse)
 library(ggplot2)
 library(gtsummary) # For summary tables
 library(modelsummary)# For summary tables
-library(mgcv) # GAM model fit 
+library(mgcv) # GAM model fit
 library(randomForest) # to apply machine learning frameworks
 library(datawizard) # for normalize()
 library(nnet) # For ANN
 library(neuralnet) # For more control on the architecture of ANN
-library(glmnet) # For lasso regression 
+library(glmnet) # For lasso regression
 library(caret)  # For bagging
 library(MASS) # for stepwise regression
 library(dplyr)
@@ -32,7 +32,7 @@ head(soil_data)
 
 # ================ 2. Prepare data ===============
 
-# Select the type of EC to be used here 
+# Select the type of EC to be used here
 soil_data$EC <- soil_data$EC_bin
 head(soil_data)
 
@@ -81,7 +81,7 @@ if (any(nzv$nzv)) {
 
 # Define training control
 train_control <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = TRUE)
-# Using cv with 5 fold here. Could also test method = "LOOCV" (Leave-One-Out Cross-Validation) 
+# Using cv with 5 fold here. Could also test method = "LOOCV" (Leave-One-Out Cross-Validation)
 
 
 # ================ 4. Train models ===============
@@ -91,8 +91,8 @@ li_models <- c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTre
 # selected predictors
 # Train multiple models using caretList
 li_multi <- caretList(
-  EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
-    NDVI + NDWI + NDSI1 + NDSI2 + SI1 + SI2 + SI3 + SI4 + SI5 + SAVI + VSSI + 
+  EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R +
+    NDVI + NDWI + NDSI1 + NDSI2 + SI1 + SI2 + SI3 + SI4 + SI5 + SAVI + VSSI +
     NBR + NBG + NBNIR + NBSWIR1 + NBSWIR2 + NRSWIR1 + NRSWIR2 + NGSWIR1 + NGSWIR2 + NNIRSWIR1 + NNIRSWIR2,
   data = train_data,
   trControl = train_control,
@@ -100,7 +100,7 @@ li_multi <- caretList(
 )
 
 
-# Check the list of models that they are functioning and not null. If null remove. 
+# Check the list of models that they are functioning and not null. If null remove.
 li_multi
 
 # Model/Feature selection
@@ -162,7 +162,7 @@ df <- data.frame(matrix(ncol=4, nrow=0))
 colnames(df) <- c("threshold", "train_acc","test_acc", "diff")
 
 for(threshold in li_thresholds){
-  # Predict classes 
+  # Predict classes
   train_predicted_class <- ifelse(train_preds[, "X1"] > threshold, 1, 0)
   test_predicted_class <- ifelse(test_preds[, "X1"] > threshold, 1, 0)
   
@@ -183,7 +183,7 @@ for(threshold in li_thresholds){
 min(df$diff)
 best_threshold = mean(df[df$diff==min(df$diff), ]$threshold)
 
-# Predict classes 
+# Predict classes
 train_predicted_class <- ifelse(train_preds[, "X1"] > best_threshold, 1, 0)
 test_predicted_class <- ifelse(test_preds[, "X1"] > best_threshold, 1, 0)
 
@@ -194,9 +194,6 @@ test_ensemble_metrics <- calculate_classification_metrics(test_data$EC, test_pre
 # Print ensemble metrics
 print(train_ensemble_metrics)
 print(test_ensemble_metrics)
+# 
 
-# saveRDS(MultiStratEnsemble, "ensemble_2501.rds")
-# test <- readRDS("ensemble_2501.rds")
-
-#write.csv(df, 'data/ensemble_thresholds.csv')
-
+#saveRDS(MultiStratEnsemble, "ensemble_2501.rds")

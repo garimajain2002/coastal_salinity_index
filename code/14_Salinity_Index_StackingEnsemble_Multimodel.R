@@ -89,14 +89,18 @@ table(soil_data_numeric$EC)
   # ================ 4. Train models ===============
   
   # Train multiple models using caretList
+  li_models <- c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")
+  
   li_multi <- caretList(
     EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + SWIR2_R + 
       NDVI + NDWI + NDSI1 + NDSI2 + SI1 + SI2 + SI3 + SI4 + SI5 + SAVI + VSSI + 
       NBR + NBG + NBNIR + NBSWIR1 + NBSWIR2 + NRSWIR1 + NRSWIR2 + NGSWIR1 + NGSWIR2 + NNIRSWIR1 + NNIRSWIR2,
     data = train_data,
     trControl = train_control,
-    methodList = c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")  
+    methodList = li_models  
   )
+  
+
   
   # Check the list of models that they are functioning and not null. If null remove. 
   li_multi
@@ -137,6 +141,7 @@ table(soil_data_numeric$EC)
   plot(model_comparison )
   
   
+  
   # ================ 5. Create the stack ensemble ===============
   # Define stack ensemble
   MultiStratEnsemble <- caretStack(
@@ -155,45 +160,83 @@ table(soil_data_numeric$EC)
   #   # Summary of the ensemble model
   # summary(MultiStratEnsemble)
   
-  # Predict probabilities
-  # Check individual model predictions ("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")
-  rf_prob <- predict(li_multi$rf, newdata = test_data, type = "prob")
-  class(li_multi$rf)
-  rpart_prob <- predict(li_multi$rpart, newdata = test_data, type = "prob")
-  nnet_prob <- predict(li_multi$nnet, newdata = test_data, type = "prob")
-  svmRadial_prob <- predict(li_multi$svmRadial, newdata = test_data, type = "prob")
-  gbm_prob <- predict(li_multi$gbm, newdata = test_data, type = "prob")
-  naive_bayes_prob <- predict(li_multi$naive_bayes, newdata = test_data, type = "prob")
-  xgb_prob <- predict(li_multi$xgbTree, newdata = test_data, type = "prob")
-  knn_prob <- predict(li_multi$knn, newdata = test_data, type = "prob")
-  glmnet_prob <- predict(li_multi$glmnet, newdata = test_data, type = "prob")
- 
-  # Combine probabilities (average)
-  ensemble_probabilities <- (rf_prob + rpart_prob + nnet_prob + svmRadial_prob + gbm_prob + naive_bayes_prob + xgb_prob + knn_prob + glmnet_prob) / 9
+  
+  train_preds <- predict(MultiStratEnsemble, newdata=train_data)
+  
+  test_preds <- predict(MultiStratEnsemble, newdata=test_data)
+  
+  # Determine the best threshold
+  # # Create ROC object based on train data
+  # roc_obj <- roc(train_data$EC, train_preds[, "X1"])
+  # # # Create ROC object based on test data
+  # # roc_obj <- roc(test_data$EC, test_preds[, "X1"])
+  # 
+  # 
+  # # Find best threshold using Youden's J statistic
+  # best_threshold <- coords(roc_obj, "best", best.method = "youden")
+  # 
+  # # Alternative: find threshold that maximizes specificity + sensitivity
+  # best_threshold_alt <- coords(roc_obj, "best", best.method = "closest.topleft")
+  # 
+  #   # Defaul threshold
+  # best_threshold_def <- 0.5
+
   
   
-  # determine the best threshold
-  # Create ROC object
-  roc_obj <- roc(test_data$EC, ensemble_probabilities[, "X1"])
+  # Find a threshold that gives the least diff between train and test accuracies. 
+  li_thresholds <- seq(0.1, 0.9, 0.01)
+  df <- data.frame(matrix(ncol=4, nrow=0))
+  colnames(df) <- c("threshold", "train_acc","test_acc", "diff")
   
-  # Find best threshold using Youden's J statistic
-  best_threshold <- coords(roc_obj, "best", best.method = "youden")
-  
-  # Alternative: find threshold that maximizes specificity + sensitivity
-  best_threshold_alt <- coords(roc_obj, "best", best.method = "closest.topleft")
-  
-  # Print the threshold
-  print(best_threshold)
- 
-  
+  for(threshold in li_thresholds){
     # Predict classes 
-  predicted_class <- ifelse(ensemble_probabilities[, "X1"] > best_threshold$threshold, 1, 0)
+    train_predicted_class <- ifelse(train_preds[, "X1"] > threshold, 1, 0)
+    test_predicted_class <- ifelse(test_preds[, "X1"] > threshold, 1, 0)
+    
+    # Calculate metrics
+    train_ensemble_metrics <- calculate_classification_metrics(train_data$EC, train_predicted_class)
+    train_acc <- train_ensemble_metrics$Accuracy
+    test_ensemble_metrics <- calculate_classification_metrics(test_data$EC, test_predicted_class)
+    test_acc <- test_ensemble_metrics$Accuracy
+    diff <- train_acc-test_acc
+    
+    df[nrow(df)+1, ] <- c(threshold, train_acc, test_acc, abs(diff))
+    
+    if(abs(diff)<0.1){
+      print(threshold)
+    }
+  }
   
+  min(df$diff)
+  df[df$diff==min(df$diff), ]
+  
+  best_threshold = mean(df[df$diff==min(df$diff), ]$threshold)
+  
+      # Print the threshold
+  print(best_threshold)
+  
+  
+  # Predict classes 
+  # train_predicted_class <- ifelse(train_preds[, "X1"] > best_threshold$threshold, 1, 0)
+  # test_predicted_class <- ifelse(test_preds[, "X1"] > best_threshold$threshold, 1, 0)
+  
+  # Predict classes based on identified threshold
+  train_predicted_class <- ifelse(train_preds[, "X1"] > best_threshold, 1, 0)
+  test_predicted_class <- ifelse(test_preds[, "X1"] > best_threshold, 1, 0)
   
   # Calculate metrics
-  ensemble_metrics <- calculate_classification_metrics(test_data$EC, predicted_class)
-  
+  train_ensemble_metrics <- calculate_classification_metrics(train_data$EC, train_predicted_class)
+  test_ensemble_metrics <- calculate_classification_metrics(test_data$EC, test_predicted_class)
   
   # Print ensemble metrics
-  print(ensemble_metrics)
+  print(train_ensemble_metrics)
+  print(test_ensemble_metrics)
   
+  
+  saveRDS(MultiStratEnsemble, "ensemble_2501.rds")
+  
+
+
+
+ 
+   
