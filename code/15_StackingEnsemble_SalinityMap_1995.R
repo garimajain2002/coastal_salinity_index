@@ -249,3 +249,4 @@ plot(predicted_ECAqua)
 ggsave("outputs/JSP_predicted_ECAqua_map_1995.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
 writeRaster(predicted_raster, "outputs/JSP_predicted_ECAqua_raster_1995.tif", format = "GTiff", overwrite = TRUE)
 
+write.csv(final_df, "outputs/1995_JSP_predicted_ECAqua_df.csv")
