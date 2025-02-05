@@ -24,8 +24,12 @@ library(pROC)
 # ================ 1. Read data ===============
 getwd()
 
-source("code/Funcs.R")
-MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
+source("code/0_AccuracyFunction.R")
+
+# Select the relevant model 
+MultiStratEnsemble <- readRDS("ensemble_0402.rds") ## All predictors included 
+#OR
+MultiStratEnsemble <- readRDS("ensemble_0502.rds") ## Lasso predictors only
 
 soil_data <- read.csv("data/soil_data_allindices.csv")
 head(soil_data)
@@ -290,7 +294,7 @@ table(soil_data_numeric$EC)
   print(importance_plot)
   
   # 4. Save results if needed
-  write.csv(feature_importance, "outputs/shapley_feature_importance.csv", row.names = FALSE)
+  write.csv(feature_importance, "outputs/shapley_feature_importance_ensemble_lassoPredictors.csv", row.names = FALSE)
   ggsave("outputs/shapley_importance_plot.png", importance_plot, width = 10, height = 8)
   
   # If you want to examine individual predictions:

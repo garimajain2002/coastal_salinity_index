@@ -15,29 +15,30 @@ df_2017 <- read.csv(unz("outputs/2017_JSP_predicted_ECAqua_df.zip","2017_JSP_pre
 df_2021 <- read.csv(unz("outputs/2021_JSP_predicted_ECAqua_df.zip","2021_JSP_predicted_ECAqua_df.csv" ))
 df_2024 <- read.csv(unz("outputs/2024_JSP_predicted_ECAqua_df.zip","2024_JSP_predicted_ECAqua_df.csv" ))
 
-aqua_1995 <- sum(df_1995$predicted_EC==2, na.rm=TRUE)
-saline_1995 <- sum(df_1995$predicted_EC==1, na.rm=TRUE)
+# Calculate area under quaculture and salinity - convert from 30mx30m cell to sq. km 
+aqua_1995 <- sum(df_1995$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_1995 <- sum(df_1995$predicted_EC==1, na.rm=TRUE)*0.0009
 
-aqua_2001 <- sum(df_2001$predicted_EC==2, na.rm=TRUE)
-saline_2001 <- sum(df_2001$predicted_EC==1, na.rm=TRUE)
+aqua_2001 <- sum(df_2001$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_2001 <- sum(df_2001$predicted_EC==1, na.rm=TRUE)*0.0009
 
-aqua_2005 <- sum(df_2005$predicted_EC==2, na.rm=TRUE)
-saline_2005 <- sum(df_2005$predicted_EC==1, na.rm=TRUE)
+aqua_2005 <- sum(df_2005$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_2005 <- sum(df_2005$predicted_EC==1, na.rm=TRUE)*0.0009
 
-aqua_2010 <- sum(df_2010$predicted_EC==2, na.rm=TRUE)
-saline_2010 <- sum(df_2010$predicted_EC==1, na.rm=TRUE)
+aqua_2010 <- sum(df_2010$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_2010 <- sum(df_2010$predicted_EC==1, na.rm=TRUE)*0.0009
 
-aqua_2014 <- sum(df_2014$predicted_EC==2, na.rm=TRUE)
-saline_2014 <- sum(df_2014$predicted_EC==1, na.rm=TRUE)
+aqua_2014 <- sum(df_2014$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_2014 <- sum(df_2014$predicted_EC==1, na.rm=TRUE)*0.0009
 
-aqua_2017 <- sum(df_2017$predicted_EC==2, na.rm=TRUE)
-saline_2017 <- sum(df_2017$predicted_EC==1, na.rm=TRUE)
+aqua_2017 <- sum(df_2017$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_2017 <- sum(df_2017$predicted_EC==1, na.rm=TRUE)*0.0009
 
-aqua_2021 <- sum(df_2021$predicted_EC==2, na.rm=TRUE)
-saline_2021 <- sum(df_2021$predicted_EC==1, na.rm=TRUE)
+aqua_2021 <- sum(df_2021$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_2021 <- sum(df_2021$predicted_EC==1, na.rm=TRUE)*0.0009
 
-aqua_2024 <- sum(df_2024$predicted_EC==2, na.rm=TRUE)
-saline_2024 <- sum(df_2024$predicted_EC==1, na.rm=TRUE)
+aqua_2024 <- sum(df_2024$predicted_EC==2, na.rm=TRUE)*0.0009
+saline_2024 <- sum(df_2024$predicted_EC==1, na.rm=TRUE)*0.0009
 
 
 combined_df <- data.frame(
@@ -46,6 +47,7 @@ combined_df <- data.frame(
   Saline_Soil = c(saline_1995, saline_2001, saline_2005, saline_2010, saline_2014, saline_2017, saline_2021, saline_2024)
 )
 
+print(combined_df)
 
 # Reshape the data from wide to long format
 long_df <- pivot_longer(combined_df, 
@@ -59,7 +61,7 @@ ggplot(long_df, aes(x = Year, y = Count, color = Category)) +
   scale_color_manual(values = c("Aquaculture" = "blue", "Saline_Soil" = "orange")) +
   theme_minimal() +
   labs(title = "Aquaculture and Saline Soil Over Time",
-       y = "Count",
+       y = "Area in Sq.km.",
        x = "Year") +
   theme(legend.title = element_blank())
 

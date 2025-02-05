@@ -40,8 +40,6 @@ library(dplyr)
 library(scales) # for scaling data from 0 to 1
 
 # Set working directory 
-# laptop 
-# setwd("C:\\Users\\Garima\\Google Drive (garimajain2002@gmail.com)\\03 PHD_Work\\Chapter 1\\Salinity and pH Indices\\")
 getwd()
 
 
@@ -725,10 +723,14 @@ soil_data$EC <- soil_data$EC_all
 train_data$EC <- train_data$EC_all
 test_data$EC <- test_data$EC_all
 
+# OR 
+
 #EC as binary
 soil_data$EC <- soil_data$EC_bin
 train_data$EC <- train_data$EC_bin
 test_data$EC <- test_data$EC_bin
+
+# OR 
 
 #EC as categorical (high, medium, low variables)
 soil_data$EC <- soil_data$EC_cat
@@ -1237,7 +1239,7 @@ bagging_model <- randomForest(EC ~ Blue_R + Red_R + Green_R + NIR_R + SWIR1_R + 
 importance(bagging_model)
 varImpPlot(bagging_model)
 
-# 1. Calculate metrics for training dataa
+# 1. Calculate metrics for training data
 predictions <- predict(bagging_model, newdata = train_data)
 
 # 2. Calculate prediction metrics manually
