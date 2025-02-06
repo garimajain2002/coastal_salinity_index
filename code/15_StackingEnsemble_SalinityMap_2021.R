@@ -30,22 +30,15 @@ best_threshold = 0.768
 
 
 # For historical maps replace images with respective years and run the same code below
-# # 2014
-# landsat_image <- stack("data/tifs/2014_JSP_Composite_AllBands.tif")
-# aqua_image <- stack("data/tifs/2014_JSP_Aquaculture.tif")
 
-# # 2017
-# landsat_image <- stack("data/tifs/2017_JSP_Composite_AllBands.tif")
-# aqua_image <- stack("data/tifs/2017_JSP_Aquaculture.tif")
-# 
 # 2021 JSP
-landsat_image <- stack("data/tifs/2021_JSP_Composite_AllBands.tif")
-aqua_image <- stack("data/tifs/2021_JSP_Aquaculture.tif")
+# landsat_image <- stack("data/tifs/2021_JSP_Composite_AllBands.tif")
+# aqua_image <- stack("data/tifs/2021_JSP_Aquaculture.tif")
 
 # # 2021 Sampling area
-# landsat_image <- stack("data/tifs/2021_SA_Composite_AllBands.tif")
-# aqua_image <- stack("data/tifs/2021_SA_Aquaculture.tif")
-# 
+landsat_image <- stack("data/tifs/2021_SA_Composite_AllBands.tif")
+aqua_image <- stack("data/tifs/2021_SA_Aquaculture.tif")
+
 
 
 # 1. Prepare landsat multiband image
@@ -199,8 +192,8 @@ predicted_EC<- ggplot(predicted_df, aes(x = x, y = y, fill = factor(predicted_EC
 plot(predicted_EC)
 
 # Change filename based on original image selection (JSP/SA)
-writeRaster(predicted_raster, "outputs/JSP_predicted_EC_raster_2021.tif", format = "GTiff", overwrite = TRUE)
-ggsave("outputs/JSP_predicted_EC_map_2021.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/SA_predicted_EC_raster_2021.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/SA_predicted_EC_map_2021.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
 
 
 
@@ -232,8 +225,8 @@ values(predicted_raster) <- as.numeric(values(predicted_raster))  # Force numeri
 unique(values(predicted_raster))
 
 # Change filename based on original image selection (JSP/SA)
-ggsave("outputs/JSP_predicted_Aqua_map_2021.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
-writeRaster(aqua_mask_raster, "outputs/JSP_predicted_Aqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/SA_predicted_Aqua_map_2021.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
+writeRaster(aqua_mask_raster, "outputs/SA_predicted_Aqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
 
 
 # 5. Plot and save final combined salinity and aqua maps
@@ -252,8 +245,8 @@ predicted_ECAqua <- ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_E
 plot(predicted_ECAqua)
 
 # Change filename based on original image selection (JSP/SA)
-ggsave("outputs/JSP_predicted_ECAqua_map_2021.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
-writeRaster(predicted_raster, "outputs/JSP_predicted_ECAqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/SA_predicted_ECAqua_map_2021.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/SA_predicted_ECAqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
 
-write.csv(final_df, "outputs/2021_JSP_predicted_ECAqua_df.csv")
+write.csv(final_df, "outputs/2021_SA_predicted_ECAqua_df.csv")
 
