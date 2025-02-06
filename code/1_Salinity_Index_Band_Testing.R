@@ -668,6 +668,13 @@ ggplot(soil_data, aes(x = VSSI , y = EC)) +
   theme_minimal()
 ggsave("outputs/EC_VSSI_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # essentially linear fit
+# poly
+ggplot(soil_data, aes(x = VSSI , y = EC)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of EC vs VSSI: Polynomial Fit ", x = "VSSI", y = "EC") +
+  theme_minimal()
+ggsave("outputs/EC_VSSI_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
