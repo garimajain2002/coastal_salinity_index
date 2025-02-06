@@ -11,8 +11,8 @@ library(ggplot2)
 # ================ 1. Read data ===============
 getwd()
 
-MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
-best_threshold = 0.85 
+MultiStratEnsemble <- readRDS("ensemble_0502.rds")
+best_threshold = 0.768 
 
 # Steps: 
 # 0. Read relevant landsat multiband and aquaculture classification images
@@ -256,3 +256,4 @@ ggsave("outputs/JSP_predicted_ECAqua_map_2021.png", plot = predicted_ECAqua, wid
 writeRaster(predicted_raster, "outputs/JSP_predicted_ECAqua_raster_2021.tif", format = "GTiff", overwrite = TRUE)
 
 write.csv(final_df, "outputs/2021_JSP_predicted_ECAqua_df.csv")
+

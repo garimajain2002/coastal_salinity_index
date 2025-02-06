@@ -11,8 +11,8 @@ library(ggplot2)
 # ================ 1. Read data ===============
 getwd()
 
-MultiStratEnsemble <- readRDS("code/ensemble_2501.rds")
-best_threshold = 0.85 
+MultiStratEnsemble <- readRDS("ensemble_0502.rds")
+best_threshold = 0.768
 
 # Steps: 
 # 0. Read relevant landsat multiband and aquaculture classification images
@@ -25,12 +25,12 @@ best_threshold = 0.85
 
 # 0. Read relevant landsat multiband image and aquaculture classification image for masking
 # 2024 JSP
-landsat_image <- stack("data/tifs/2024_JSP_Landsat_Composite_AllBands.tif")
-aqua_image <- stack("data/tifs/2024_JSP_Aquaculture.tif") #stack() reads the bands into a multi-layer object
+# landsat_image <- stack("data/tifs/2024_JSP_Landsat_Composite_AllBands.tif")
+# aqua_image <- stack("data/tifs/2024_JSP_Aquaculture.tif") #stack() reads the bands into a multi-layer object
 
 # #2024 Sampling area
-# landsat_image <- stack("data/tifs/2024_SA_Landsat_Composite_AllBands.tif")
-# aqua_image <- stack("data/tifs/2024_SA_Aquaculture.tif") #stack() reads the bands into a multi-layer object
+landsat_image <- stack("data/tifs/2024_SA_Landsat_Composite_AllBands.tif")
+aqua_image <- stack("data/tifs/2024_SA_Aquaculture.tif") #stack() reads the bands into a multi-layer object
 
 
 
@@ -185,8 +185,8 @@ predicted_EC<- ggplot(predicted_df, aes(x = x, y = y, fill = factor(predicted_EC
 plot(predicted_EC)
 
 # Change filename based on original image selection (JSP/SA)
-writeRaster(predicted_raster, "outputs/JSP_predicted_EC_raster_2024.tif", format = "GTiff", overwrite = TRUE)
-ggsave("outputs/JSP_predicted_EC_map_2024.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/SA_predicted_EC_raster_2024.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/SA_predicted_EC_map_2024.png", plot = predicted_EC, width = 8, height = 6, dpi = 300)
 
 
 
@@ -218,8 +218,8 @@ values(predicted_raster) <- as.numeric(values(predicted_raster))  # Force numeri
 unique(values(predicted_raster))
 
 # # Change filename based on original image selection (JSP/SA)
-ggsave("outputs/JSP_predicted_Aqua_map_2024.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
-writeRaster(aqua_mask_raster, "outputs/JSP_predicted_Aqua_raster_2024.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/SA_predicted_Aqua_map_2024.png", plot = predicted_Aqua, width = 8, height = 6, dpi = 300)
+writeRaster(aqua_mask_raster, "outputs/SA_predicted_Aqua_raster_2024.tif", format = "GTiff", overwrite = TRUE)
 
 
 
@@ -240,7 +240,8 @@ predicted_ECAqua <- ggplot(final_df, aes(x = x, y = y, fill = factor(predicted_E
 plot(predicted_ECAqua)
 
 # Change filename based on original image selection (year)JSP/SA)
-ggsave("outputs/JSP_predicted_ECAqua_map_2024.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
-writeRaster(predicted_raster, "outputs/JSP_predicted_ECAqua_raster_2024.tif", format = "GTiff", overwrite = TRUE)
+ggsave("outputs/SA_predicted_ECAqua_map_2024.png", plot = predicted_ECAqua, width = 8, height = 6, dpi = 300)
+writeRaster(predicted_raster, "outputs/SA_predicted_ECAqua_raster_2024.tif", format = "GTiff", overwrite = TRUE)
 
-write.csv(final_df, "outputs/2024_JSP_predicted_ECAqua_df.csv")
+write.csv(final_df, "outputs/2024_SA_predicted_ECAqua_df.csv")
+

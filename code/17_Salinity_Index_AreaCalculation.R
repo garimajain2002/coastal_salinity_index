@@ -4,8 +4,6 @@ library(tidyr)
 
 getwd()
 
-data <- read.csv(unz("yourfile.zip", "filename.csv"))
-
 df_1995 <- read.csv(unz("outputs/1995_JSP_predicted_ECAqua_df.zip","1995_JSP_predicted_ECAqua_df.csv" ))
 df_2001 <- read.csv(unz("outputs/1995_JSP_predicted_ECAqua_df.zip","1995_JSP_predicted_ECAqua_df.csv" ))
 df_2005 <- read.csv(unz("outputs/2001_JSP_predicted_ECAqua_df.zip","2001_JSP_predicted_ECAqua_df.csv" ))
