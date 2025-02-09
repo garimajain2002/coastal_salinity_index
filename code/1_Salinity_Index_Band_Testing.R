@@ -51,8 +51,13 @@ soil_data <- read.csv("data/Soil_data_raw.csv")
 # Remove observations with missing Band values from Soil Data (7 points were on the masked areas)
 soil_data <- soil_data[!is.na(soil_data$Blue), ]
 
+# Keep soil moisture data for reflectance assessment
+head(soil_data)
+summary(soil_data$Soil_Moisture_Lab)
+table(soil_data$Soil_moisture_field) # have field measures to fill the 40 missing lab measures, but leaving out for now. 
+
 # Make a clean subset of data
-soil_data <- soil_data[, c("Name", "EC", "pH", "Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2")]
+soil_data <- soil_data[, c("Name", "EC", "pH", "Soil_Moisture_Lab", "Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2")]
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -195,7 +200,7 @@ write.csv(soil_data, "data/soil_data_allindices.csv")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # First just simply check the linear correlation between EC and other bands/indices using a correlation matrix 
-cor_matrix <- cor(soil_data[, c("EC", "Blue_R", "Red_R", "Green_R", "NIR_R", "SWIR1_R", "SWIR2_R",
+cor_matrix <- cor(soil_data[, c("EC","pH" ,"Soil_Moisture_Lab","Blue_R", "Red_R", "Green_R", "NIR_R", "SWIR1_R", "SWIR2_R",
                                 "NBR", "NBG", "NBNIR", "NBSWIR1", "NBSWIR2", 
                                 "NDVI", "NDSI2", "NRSWIR1", "NRSWIR2", 
                                 "NDWI", "NGSWIR1", "NGSWIR2", 
@@ -209,13 +214,14 @@ write.csv(cor_matrix, "outputs/EC_bands_correlation.csv")
 # As per this, the best linear predictors are NIR, NBNIR, NDSI2, NRSWIR1, NDWI, SAVI
 # But that maybe because the best fit is non-linear. 
 # Correlation does not change by normalising the data.
+# Also, notably, while EC is strongly correlated with moisture, it is not as strongly correlated with pH
 
 
 # Now try some descriptive visualizations to see the relationship between band reflectances and salinity (e.g.linear or logarithmic) 
 # Create the scatter plots between EC and Bands+indices and fit different curves
 # Blue Linear 
 ggplot(soil_data, aes(x = Blue_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", color = "black", se = FALSE) +  # Linear regression line
   labs(title = "Scatterplot of EC vs Blue Band: Linear Fit", x = "Blue", y = "EC") +
   theme_minimal()
@@ -223,7 +229,7 @@ ggsave("outputs/EC_Blue_Linear.png", width = 8, height = 6, dpi = 300, bg = "whi
 
 # Blue Curve (smooth Loess)
 ggplot(soil_data, aes(x = Blue_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "loess", color = "black", se = FALSE) +  # Smooth curve
   labs(title = "Scatterplot of EC vs Blue Band: Loess Fit", x = "Blue", y = "EC") +
   theme_minimal()
@@ -232,7 +238,7 @@ ggsave("outputs/EC_Blue_Loess.png", width = 8, height = 6, dpi = 300, bg = "whit
 
 # Blue Curve (Generalised Additive Model - fit various curves)
 ggplot(soil_data, aes(x = Blue_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs Blue Band: GAM fit", x = "Blue", y = "EC") +
   theme_minimal()
@@ -242,7 +248,7 @@ ggsave("outputs/EC_Blue_GAM.png", width = 8, height = 6, dpi = 300, bg = "white"
 
 # Blue polynomial curve 
 ggplot(soil_data, aes(x = Blue_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs Blue Band: Polynomial Fit", x = "Blue", y = "EC") +
   theme_minimal()
@@ -254,7 +260,7 @@ ggsave("outputs/EC_Blue_Poly.png", width = 8, height = 6, dpi = 300, bg = "white
 
 # Red Curve (Generalised Additive Model - fit various curves)
 ggplot(soil_data, aes(x = Red_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs Red Band: GAM Fit", x = "Red", y = "EC") +
   theme_minimal()
@@ -264,7 +270,7 @@ ggsave("outputs/EC_Red_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 #looks like the best fit is linear maybe mildly quadratic
 # Red polynomial curve 
 ggplot(soil_data, aes(x = Red_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs Red Band: Polynomial Fit", x = "Red", y = "EC") +
   theme_minimal()
@@ -273,7 +279,7 @@ ggsave("outputs/EC_Red_Poly.png", width = 8, height = 6, dpi = 300, bg = "white"
 
 # Green Curve (Generalised Additive Model - fit various curves)
 ggplot(soil_data, aes(x = Green_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs Green Band: GAM Fit", x = "Green", y = "EC") +
   theme_minimal()
@@ -282,7 +288,7 @@ ggsave("outputs/EC_Green_GAM.png", width = 8, height = 6, dpi = 300, bg = "white
 #looks like the best fit is linear maybe mildly quadratic
 # Green polynomial curve 
 ggplot(soil_data, aes(x = Green_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs Green Band: Polynomial Fit", x = "Green", y = "EC") +
   theme_minimal()
@@ -291,7 +297,7 @@ ggsave("outputs/EC_Green_Poly.png", width = 8, height = 6, dpi = 300, bg = "whit
 
 # NIR Curve (Generalised Additive Model - fit various curves)
 ggplot(soil_data, aes(x = NIR_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NIR Band: GAM Fit", x = "NIR", y = "EC") +
   theme_minimal()
@@ -300,7 +306,7 @@ ggsave("outputs/EC_NIR_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # Quadratic fit
 # NIR polynomial curve 
 ggplot(soil_data, aes(x = NIR_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NIR Band: Polynomial Fit", x = "NIR", y = "EC") +
   theme_minimal()
@@ -310,7 +316,7 @@ ggsave("outputs/EC_NIR_poly.png", width = 8, height = 6, dpi = 300, bg = "white"
 
 # SWIR1 Curve (Generalised Additive Model - fit various curves)
 ggplot(soil_data, aes(x = SWIR1_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SWIR1 Band: GAM Fit", x = "SWIR1", y = "EC") +
   theme_minimal()
@@ -320,7 +326,7 @@ ggsave("outputs/EC_SWIR1_GAM.png", width = 8, height = 6, dpi = 300, bg = "white
 
 # SWIR2 Curve (Generalised Additive Model - fit various curves)
 ggplot(soil_data, aes(x = SWIR2_R, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SWIR2 Band: GAM Fit", x = "SWIR2", y = "EC") +
   theme_minimal()
@@ -331,7 +337,7 @@ ggsave("outputs/EC_SWIR2_GAM.png", width = 8, height = 6, dpi = 300, bg = "white
 # Visualize indices calculated
 # Blue and red 
 ggplot(soil_data, aes(x = NBR, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NBR: GAM Fit", x = "NBR", y = "EC") +
   theme_minimal()
@@ -341,7 +347,7 @@ ggsave("outputs/EC_NBR_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 
 # NBG Blue and green 
 ggplot(soil_data, aes(x = NBG, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NBG: GAM Fit", x = "NBG", y = "EC") +
   theme_minimal()
@@ -353,7 +359,7 @@ ggsave("outputs/EC_NBG_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # Blue and NIR
 #gam
 ggplot(soil_data, aes(x = NBNIR, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NBNIR: GAM Fit", x = "NBNIR", y = "EC") +
   theme_minimal()
@@ -361,7 +367,7 @@ ggsave("outputs/EC_NBNIR_GAM.png", width = 8, height = 6, dpi = 300, bg = "white
 #definitely a quadratic relationship
 #polynomial
 ggplot(soil_data, aes(x = NBNIR, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NBNIR: Polynomial Fit", x = "NBNIR", y = "EC") +
   theme_minimal()
@@ -372,7 +378,7 @@ ggsave("outputs/EC_NBNIR_Poly.png", width = 8, height = 6, dpi = 300, bg = "whit
 # Blue and SWIR1
 #gam
 ggplot(soil_data, aes(x = NBSWIR1, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NBSWIR1: GAM Fit ", x = "NBSWIR1", y = "EC") +
   theme_minimal()
@@ -380,7 +386,7 @@ ggsave("outputs/EC_NBSWRIR1_GAM.png", width = 8, height = 6, dpi = 300, bg = "wh
 # What fit? 
 #polynomial
 ggplot(soil_data, aes(x = NBSWIR1, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), color = "black") +  # cubic curve
   labs(title = "Scatterplot of EC vs NBSWIR1", x = "NBSWIR1: Polynomial Fit", y = "EC") +
   theme_minimal()
@@ -389,7 +395,7 @@ ggsave("outputs/EC_NBSWRIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "w
 # Blue and SWIR2 
 #gam
 ggplot(soil_data, aes(x = NBSWIR2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NBSWIR2: GAM Fit ", x = "NBSWIR2", y = "EC") +
   theme_minimal()
@@ -397,7 +403,7 @@ ggsave("outputs/EC_NBSWRIR2_GAM.png", width = 8, height = 6, dpi = 300, bg = "wh
 # gaussian fit?  
 #polynomial
 ggplot(soil_data, aes(x = NBSWIR2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NBSWIR2 : Polynomial Fit", x = "NBSWIR2", y = "EC") +
   theme_minimal()
@@ -407,7 +413,7 @@ ggsave("outputs/EC_NBSWRIR2_Poly.png", width = 8, height = 6, dpi = 300, bg = "w
 # Red and Green (also NDVI) 
 # gam
 ggplot(soil_data, aes(x = NDVI, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NDVI: GAM Fit", x = "NDVI", y = "EC") +
   theme_minimal()
@@ -418,7 +424,7 @@ ggsave("outputs/EC_NDVI_GAM.png", width = 8, height = 6, dpi = 300, bg = "white"
 # Red and NIR (Normalised Difference Salinity Index 2 as per Khan et al 2001 in Nguyen et al 2020)
 #gam
 ggplot(soil_data, aes(x = NDSI2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NDSI2: GAM Fit", x = "NDSI2", y = "EC") +
   theme_minimal()
@@ -427,7 +433,7 @@ ggsave("outputs/EC_NDSI2_GAM.png", width = 8, height = 6, dpi = 300, bg = "white
 
 #polynomial
 ggplot(soil_data, aes(x = NDSI2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NDSI2: Polynomial Fit", x = "NDSI2", y = "EC") +
   theme_minimal()
@@ -437,7 +443,7 @@ ggsave("outputs/EC_NDSI2_Poly.png", width = 8, height = 6, dpi = 300, bg = "whit
 # Red and SWIR1
 #gam
 ggplot(soil_data, aes(x = NRSWIR1, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NRSWIR1: GAM Fit", x = "NRSWIR1", y = "EC") +
   theme_minimal()
@@ -445,7 +451,7 @@ ggsave("outputs/EC_NRSWIR1_GAM.png", width = 8, height = 6, dpi = 300, bg = "whi
 
 #polynomial
 ggplot(soil_data, aes(x = NRSWIR1, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), color = "black") +  # cubic curve
   labs(title = "Scatterplot of EC vs NRSWIR1: Polynomial Fit", x = "NRSWIR1", y = "EC") +
   theme_minimal()
@@ -455,7 +461,7 @@ ggsave("outputs/EC_NRSWIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "wh
 # Red and SWIR2
 #gam
 ggplot(soil_data, aes(x = NRSWIR2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NRSWIR2: GAM Fit", x = "NRSWIR2", y = "EC") +
   theme_minimal()
@@ -464,7 +470,7 @@ ggsave("outputs/EC_NRSWIR2_GAM.png", width = 8, height = 6, dpi = 300, bg = "whi
 
 #polynomial
 ggplot(soil_data, aes(x = NRSWIR2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NRSWIR2: Polynomial", x = "NRSWIR2", y = "EC") +
   theme_minimal()
@@ -474,7 +480,7 @@ ggsave("outputs/EC_NRSWIR2_Poly.png", width = 8, height = 6, dpi = 300, bg = "wh
 # Green and NIR (also NDWI) 
 #gam
 ggplot(soil_data, aes(x = NDWI, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NDWI: GAM Fit", x = "NDWI", y = "EC") +
   theme_minimal()
@@ -482,7 +488,7 @@ ggsave("outputs/EC_NDWI_GAM.png", width = 8, height = 6, dpi = 300, bg = "white"
 
 #polynomial
 ggplot(soil_data, aes(x = NDWI, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), color = "black") +  # cubic curve
   labs(title = "Scatterplot of EC vs NDWI: Polynomial Fit", x = "NDWI", y = "EC") +
   theme_minimal()
@@ -491,7 +497,7 @@ ggsave("outputs/EC_NDWI_Poly.png", width = 8, height = 6, dpi = 300, bg = "white
 # Green and SWIR1
 #gam
 ggplot(soil_data, aes(x = NGSWIR1, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NGSWIR1: GAM Fit", x = "NGSWIR1", y = "EC") +
   theme_minimal()
@@ -500,7 +506,7 @@ ggsave("outputs/EC_NGSWIR1_GAM.png", width = 8, height = 6, dpi = 300, bg = "whi
 # Gaussian fit? 
 #polynomial
 ggplot(soil_data, aes(x = NGSWIR1, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NGSWIR1: Polynomial Fit", x = "NGSWIR1", y = "EC") +
   theme_minimal()
@@ -509,7 +515,7 @@ ggsave("outputs/EC_NGSWIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "wh
 # Green and SWIR2
 #gam
 ggplot(soil_data, aes(x = NGSWIR2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NGSWIR2: GAM Fit", x = "NGSWIR2", y = "EC") +
   theme_minimal()
@@ -518,7 +524,7 @@ ggsave("outputs/EC_NGSWIR2_GAM.png", width = 8, height = 6, dpi = 300, bg = "whi
 
 #polynomial
 ggplot(soil_data, aes(x = NGSWIR2, y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NGSWIR2: Polynomial Fit", x = "NGSWIR2", y = "EC") +
   theme_minimal()
@@ -528,7 +534,7 @@ ggsave("outputs/EC_NGSWIR2_Poly.png", width = 8, height = 6, dpi = 300, bg = "wh
 # NIR and SWIR1
 #gam
 ggplot(soil_data, aes(x = NNIRSWIR1 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NNIRSWIR1: GAM Fit ", x = "NNIRSWIR1 ", y = "EC") +
   theme_minimal()
@@ -536,7 +542,7 @@ ggsave("outputs/EC_NNIRSWIR1_GAM.png", width = 8, height = 6, dpi = 300, bg = "w
 # mostly linear but a little exponential? 
 #polynomial
 ggplot(soil_data, aes(x = NNIRSWIR1 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NNIRSWIR1: Polynomial Fit ", x = "NNIRSWIR1 ", y = "EC") +
   theme_minimal()
@@ -546,7 +552,7 @@ ggsave("outputs/EC_NNIRSWIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "
 # NIR and SWIR2 
 #gam
 ggplot(soil_data, aes(x = NNIRSWIR2 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NNIRSWIR2: GAM Fit ", x = "NNIRSWIR2 ", y = "EC") +
   theme_minimal()
@@ -554,7 +560,7 @@ ggsave("outputs/EC_NNIRSWIR2_GAM.png", width = 8, height = 6, dpi = 300, bg = "w
 # mostly linear but a little exponential? 
 #polynomial
 ggplot(soil_data, aes(x = NNIRSWIR2 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs NNIRSWIR2: Polynomial Fit", x = "NNIRSWIR2 ", y = "EC") +
   theme_minimal()
@@ -563,19 +569,27 @@ ggsave("outputs/EC_NNIRSWIR2_Poly.png", width = 8, height = 6, dpi = 300, bg = "
 # SWIR1 and SWIR2 (also NDSI as per the Index Database: https://www.indexdatabase.de/db/is.php?sensor_id=168 )
 #gam
 ggplot(soil_data, aes(x = NDSI1 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs NDSI1: GAM Fit ", x = "NDSI1", y = "EC") +
   theme_minimal()
 ggsave("outputs/EC_NDSI1_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # essentially linear
 
+ggplot(soil_data, aes(x = NDSI1 , y = EC)) +
+  geom_point(color = "orange") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of EC vs NDSI1: Polynomial Fit", x = "NDSI1 ", y = "EC") +
+  theme_minimal()
+ggsave("outputs/EC_NDSI1_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
 
 # Other widely used Salinity indices (listed in Nguyen et al. 2020)
 # Salinity Index 1 = sqrt(green^2+red^2)
 #gam
 ggplot(soil_data, aes(x = SI1 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SI1: GAM Fit ", x = "SI1", y = "EC") +
   theme_minimal()
@@ -583,7 +597,7 @@ ggsave("outputs/EC_SI1_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # linear with slight quadratic fit
 #polynomial
 ggplot(soil_data, aes(x = SI1 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs SI1: Polynomial Fit ", x = "SI1", y = "EC") +
   theme_minimal()
@@ -592,7 +606,7 @@ ggsave("outputs/EC_SI1_Poly.png", width = 8, height = 6, dpi = 300, bg = "white"
 # Salinity Index 2 = sqrt(green x red)
 #gam
 ggplot(soil_data, aes(x = SI2 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SI2: GAM Fit", x = "SI2", y = "EC") +
   theme_minimal()
@@ -600,7 +614,7 @@ ggsave("outputs/EC_SI2_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # linear with slight quadratic fit
 #polynomial
 ggplot(soil_data, aes(x = SI2 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs SI2: Polynomial Fit ", x = "SI2", y = "EC") +
   theme_minimal()
@@ -610,7 +624,7 @@ ggsave("outputs/EC_SI2_Poly.png", width = 8, height = 6, dpi = 300, bg = "white"
 # Salinity Index 3 = sqrt(blue x red) 
 #gam
 ggplot(soil_data, aes(x = SI3 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SI3: GAM Fit", x = "SI3", y = "EC") +
   theme_minimal()
@@ -622,7 +636,7 @@ ggsave("outputs/EC_SI3_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # salinity index 4 = red x NIR / green 
 #gam
 ggplot(soil_data, aes(x = SI4 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SI4: GAM Fit", x = "SI4", y = "EC") +
   theme_minimal()
@@ -633,7 +647,7 @@ ggsave("outputs/EC_SI4_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # salinity index 5 = blue/red 
 #gam
 ggplot(soil_data, aes(x = SI5 , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SI5: GAM Fit", x = "SI5", y = "EC") +
   theme_minimal()
@@ -644,7 +658,7 @@ ggsave("outputs/EC_SI5_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # Soil Adjusted Vegetation Index (SAVI) = ((1.5)x NIR) - (red/0.5) + NIR + Red 
 #gam
 ggplot(soil_data, aes(x = SAVI , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs SAVI: GAM Fit", x = "SAVI", y = "EC") +
   theme_minimal()
@@ -652,7 +666,7 @@ ggsave("outputs/EC_SAVI_GAM.png", width = 8, height = 6, dpi = 300, bg = "white"
 # quadratic?
 #polynomial
 ggplot(soil_data, aes(x = SAVI , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs SAVI: Polynomial Fit ", x = "SAVI", y = "EC") +
   theme_minimal()
@@ -662,7 +676,7 @@ ggsave("outputs/EC_SAVI_Poly.png", width = 8, height = 6, dpi = 300, bg = "white
 # Vegetation Soil Salinity Index (VSSI) = (2 x green) - 5 x (red + NIR) 
 #gam
 ggplot(soil_data, aes(x = VSSI , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "gam", color = "black", se = FALSE) +  # fitted
   labs(title = "Scatterplot of EC vs VSSI: GAM Fit", x = "VSSI", y = "EC") +
   theme_minimal()
@@ -670,11 +684,122 @@ ggsave("outputs/EC_VSSI_GAM.png", width = 8, height = 6, dpi = 300, bg = "white"
 # essentially linear fit
 # poly
 ggplot(soil_data, aes(x = VSSI , y = EC)) +
-  geom_point(color = "blue") +  # Scatter points
+  geom_point(color = "orange") +  # Scatter points
   geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
   labs(title = "Scatterplot of EC vs VSSI: Polynomial Fit ", x = "VSSI", y = "EC") +
   theme_minimal()
 ggsave("outputs/EC_VSSI_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# Plot polynomial relationship of the select indices with moisture
+# NDWI
+ggplot(soil_data, aes(x = NDWI , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NDWI: Polynomial Fit ", x = "NDWI", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NDWI_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+# NBNIR
+ggplot(soil_data, aes(x = NBNIR , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NBNIR: Polynomial Fit ", x = "NBNIR", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NBNIR_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# SWIR2_R
+ggplot(soil_data, aes(x = SWIR2_R , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs SWIR2: Polynomial Fit ", x = "SWIR2", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_SWIR2_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# Green_R
+ggplot(soil_data, aes(x = Green_R , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs Green: Polynomial Fit ", x = "Green", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_Green_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# NRSWIR1
+ggplot(soil_data, aes(x = NRSWIR1 , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NRSWIR1: Polynomial Fit ", x = "NRSWIR1", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NRSWIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# NRSWIR1
+ggplot(soil_data, aes(x = NRSWIR1 , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NRSWIR1: Polynomial Fit ", x = "NRSWIR1", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NRSWIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# VSSI
+ggplot(soil_data, aes(x = VSSI , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs VSSI: Polynomial Fit ", x = "VSSI", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_VSSI_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# VSSI
+ggplot(soil_data, aes(x = VSSI , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs VSSI: Polynomial Fit ", x = "VSSI", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_VSSI_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# NNIRSWIR1
+ggplot(soil_data, aes(x = NNIRSWIR1 , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NNIRSWIR1: Polynomial Fit ", x = "NNIRSWIR1", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NNIRSWIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# NDSI1
+ggplot(soil_data, aes(x = NDSI1 , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NDSI1: Polynomial Fit ", x = "NDSI1", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NDSI1_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# NGSWIR1
+ggplot(soil_data, aes(x = NGSWIR1 , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NGSWIR1: Polynomial Fit ", x = "NGSWIR1", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NGSWIR1_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+# NBSWIR2
+ggplot(soil_data, aes(x = NBSWIR2 , y = Soil_Moisture_Lab)) +
+  geom_point(color = "blue") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of Moisture vs NBSWIR2: Polynomial Fit ", x = "NBSWIR2", y = "Soil Moisture") +
+  theme_minimal()
+ggsave("outputs/Moisture_NBSWIR2_Poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
