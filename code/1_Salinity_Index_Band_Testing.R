@@ -53,8 +53,7 @@ soil_data <- soil_data[!is.na(soil_data$Blue), ]
 
 # Keep soil moisture data for reflectance assessment
 head(soil_data)
-summary(soil_data$Soil_Moisture_Lab)
-table(soil_data$Soil_moisture_field) # have field measures to fill the 40 missing lab measures, but leaving out for now. 
+summary(soil_data$Soil_Moisture_Lab) # have field measures to fill the 40 missing lab measures, but leaving out for now. 
 
 # Make a clean subset of data
 soil_data <- soil_data[, c("Name", "EC", "pH", "Soil_Moisture_Lab", "Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2")]
@@ -323,6 +322,17 @@ ggplot(soil_data, aes(x = SWIR1_R, y = EC)) +
 ggsave("outputs/EC_SWIR1_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # seems to have no relation
 
+# Poly
+ggplot(soil_data, aes(x = SWIR1_R, y = EC)) +
+  geom_point(color = "orange") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of EC vs SWIR1 Band: Polynomial Fit", x = "SWIR1", y = "EC") +
+  theme_minimal()
+ggsave("outputs/EC_SWIR1_poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
+
+
+
 
 # SWIR2 Curve (Generalised Additive Model - fit various curves)
 ggplot(soil_data, aes(x = SWIR2_R, y = EC)) +
@@ -332,6 +342,15 @@ ggplot(soil_data, aes(x = SWIR2_R, y = EC)) +
   theme_minimal()
 ggsave("outputs/EC_SWIR2_GAM.png", width = 8, height = 6, dpi = 300, bg = "white")
 # seems to have no relation
+
+# Poly
+ggplot(soil_data, aes(x = SWIR2_R, y = EC)) +
+  geom_point(color = "orange") +  # Scatter points
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), color = "black") +  # quadratic curve
+  labs(title = "Scatterplot of EC vs SWIR2 Band: Polynomial Fit", x = "SWIR2", y = "EC") +
+  theme_minimal()
+ggsave("outputs/EC_SWIR2_poly.png", width = 8, height = 6, dpi = 300, bg = "white")
+
 
 
 # Visualize indices calculated
