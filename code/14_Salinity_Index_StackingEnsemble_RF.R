@@ -8,6 +8,20 @@ library(caretEnsemble)
 library(pROC)
 library(data.table)
 library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(gtsummary) # For summary tables
+library(modelsummary)# For summary tables
+library(mgcv) # GAM model fit 
+library(randomForest) # to apply machine learning frameworks
+library(datawizard) # for normalize()
+library(nnet) # For ANN
+library(neuralnet) # For more control on the architecture of ANN
+library(glmnet) # For lasso regression 
+library(MASS) # for stepwise regression
+library(scales) # for scaling data from 0 to 1
+library(kernlab)
+library(naivebayes)
 
 # Load accuracy metrics function
 source("code/0_AccuracyFunction.R")
@@ -50,13 +64,17 @@ x <- soil_data_numeric %>% dplyr::select(-one_of(drop.cols))
 for(i in 1:ncol(x)){
   x[, i] <- rescale(x[, i])
 }
+
 x <- data.matrix(x)
 
 y <- soil_data_numeric$EC
 table(y)
 
 cvmodel <- cv.glmnet(x, y, alpha=1, family='binomial') # did not converge
+png(filename='outputs/lasso_lambda.png', width=800, height=400, res=96)
 plot(cvmodel)
+dev.off()
+
 best_lambda <- cvmodel$lambda.min
 best_lambda
 
@@ -152,8 +170,8 @@ print(paste("Models above threshold:", paste(selected_models, collapse=", ")))
 
 # Visual inspection to find  a natural breakpoint?
 # Plot model performances
-model_comparison <- dotplot(model_performances)  
-plot(model_comparison )
+model_comparison <- dotplot(model_performances)
+plot(model_comparison)
 
 
 
@@ -173,11 +191,25 @@ MultiStratEnsemble <- caretStack(
 # Check the ensemble object
 print(summary(MultiStratEnsemble))
 
+# Tried the glm model
+#MultiStratEnsemble_glm <- caretStack(
+#  li_multi,
+#  method = "glm",  
+#  metric = "ROC",
+#  trControl = trainControl(
+#    method = "cv", 
+#    number = 5, 
+#    classProbs = TRUE,
+#    summaryFunction = twoClassSummary
+#  )
+#)
+
+
 
 # ================ 8. Make Predictions & Fix Type Issues ===============
 # Predict probabilities
-train_preds <- predict(MultiStratEnsemble, newdata=train_data)
-test_preds <- predict(MultiStratEnsemble, newdata=test_data)
+train_preds <- predict(MultiStratEnsemble_glm, newdata=train_data)
+test_preds <- predict(MultiStratEnsemble_glm, newdata=test_data)
 
 # Ensure output is a data frame with X0 and X1 probabilities
 print(str(train_preds))  
@@ -202,6 +234,35 @@ best_threshold <- best_threshold_df$threshold
 
 print(paste("Best threshold:", round(best_threshold, 4)))
 
+# test sensitivity to thresholds
+li_thresholds <- seq(0.1, 0.9, 0.01)
+df <- data.frame(matrix(ncol=4, nrow=0))
+colnames(df) <- c("threshold", "train_acc","test_acc", "diff")
+
+for(threshold in li_thresholds){
+  # Predict classes 
+  train_predicted_class <- ifelse(train_preds[, "X1"] > threshold, "X1", "X0")
+  test_predicted_class <- ifelse(test_preds[, "X1"] > threshold, "X1", "X0")
+  
+  # Calculate metrics
+  train_ensemble_metrics <- calculate_classification_metrics(train_data$EC, train_predicted_class)
+  train_acc <- train_ensemble_metrics$Accuracy
+  test_ensemble_metrics <- calculate_classification_metrics(test_data$EC, test_predicted_class)
+  test_acc <- test_ensemble_metrics$Accuracy
+  diff <- train_acc-test_acc
+  
+  df[nrow(df)+1, ] <- c(threshold, train_acc, test_acc, abs(diff))
+  
+#  if(abs(diff)<0.1){
+#    print(threshold)
+#  }
+}
+
+write.csv(df, 'outputs/threshold_tests.csv')
+
+# min(df$diff)
+
+mean(df$diff)
 
 # ================ 10. Prediction ===============
 
@@ -232,5 +293,5 @@ print(test_ensemble_metrics)
 
 # ================ 12. Save Model ===============
 saveRDS(MultiStratEnsemble, "ensemble_0502.rds")
-test <- readRDS("ensemble_0502.rds")
+# test <- readRDS("ensemble_0502.rds")
 
