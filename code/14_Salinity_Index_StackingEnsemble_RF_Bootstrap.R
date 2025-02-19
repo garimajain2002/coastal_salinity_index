@@ -105,21 +105,46 @@ if (any(nzv$nzv)) {
 }
 
 # Define cross-validation control
-train_control <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = TRUE)
-# Using cv with 5 fold here. Could also test method = "LOOCV" (Leave-One-Out Cross-Validation) 
+train_control <- trainControl(method = "boot632", number = 100, savePredictions = "final", classProbs = TRUE)
+
+# Could also test method = "LOOCV" (Leave-One-Out Cross-Validation) 
   
 
 # ================ 5. Train Models Individually ===============
-li_models <- c("rf", "rpart", "nnet", "svmRadial", "gbm", "naive_bayes", "xgbTree", "knn", "glmnet")
+xgb_grid <- expand.grid(
+  nrounds = c(50, 100, 150),
+  max_depth = c(3, 6, 9),
+  eta = c(0.01, 0.1, 0.3),
+  gamma = 0,
+  colsample_bytree = 0.8,
+  min_child_weight = 1,
+  subsample = 0.8
+)
+
+old_warn <- getOption("warn")  # Store current warning level
+options(warn = -1)  # Suppress warnings globally
+
+li_models <- list(
+  rf = caretModelSpec(method = "rf", tuneLength = 3),
+  rpart = caretModelSpec(method = "rpart", tuneLength = 3),
+  nnet = caretModelSpec(method = "nnet", tuneLength = 3, trace = FALSE),
+  svmRadial = caretModelSpec(method = "svmRadial", tuneLength = 3),
+  gbm = caretModelSpec(method = "gbm", tuneLength = 3, verbose = FALSE),
+  naive_bayes = caretModelSpec(method = "naive_bayes", tuneLength = 3),
+  xgbTree = caretModelSpec(method = "xgbTree", tuneGrid = xgb_grid, verbose = FALSE),  # ntree_limit deprecated Warning comes from xgBoost
+  knn = caretModelSpec(method = "knn", tuneLength = 3),
+  glmnet = caretModelSpec(method = "glmnet", tuneLength = 3)
+)
+
 
 li_multi <- caretList(
   EC ~ .,
   data = train_data,
   trControl = train_control,
-  methodList = li_models
+  tuneList = li_models
 )
 
-# Warning comes from xgboost
+options(warn = old_warn)  # Restore previous warning level
 
 # Check models - If null remove 
 print(li_multi)
@@ -236,6 +261,6 @@ print(test_ensemble_metrics)
 
 
 # ================ 12. Save Model ===============
-saveRDS(MultiStratEnsemble, "ensemble_0502.rds")
-test <- readRDS("ensemble_0502.rds")
+saveRDS(MultiStratEnsemble, "ensemble_1202_bootstrap.rds")
+test <- readRDS("ensemble_1202_bootstrap.rds")
 
