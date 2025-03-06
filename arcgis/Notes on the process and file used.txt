@@ -1,0 +1,78 @@
+Step 1-4 in GEE
+Step 1: Extracted sentinel and Landsat images for the month of Feb 2024 in GEE and made 2 composites (1_Aquaculture+SoilSalinity_SampleArea_3Classes) 
+Step 2: Identified points (in line with field observations) for aquaculture, dry aquaculture, and other land uses with the Sentinel higher resolution image collection. 
+Step 3: Used these points to conduct a supervised LULC classification of a Landsat composite for the same time period using Random Forest Classifier. High accuracy.
+Step 4: Saved this LULC and the original Landat Composite as GeoTiff.
+
+Step 5: In Arc GIS (C:\Users\Garima\Google Drive (garimajain2002@gmail.com)\03_PHD_ArcGISPro\Ch1_SalinityIndex\Salinity_Index_Field_Data) used the Aquaculture land use to mask Landsat image using the following python code in the ArcGIS python code editor: 
+
+(!!!! Check if extract_masked_fromLandsat is just a copy of the Landsat tiff) 
+(!!!! Need to document how the aqua_class2mask was created which is then used in the code below) 
+
+
+
+import arcpy
+import os
+
+# Set workspace if needed
+arcpy.env.workspace = r"C:\Users\Garima\Desktop\ArcGISPro\Ch3\AAG_FieldData\AAG_FieldData\AAG_FieldData.gdb"
+
+# Define file paths
+multi_band_tiff = r"C:\Users\Garima\Desktop\ArcGISPro\Ch3\AAG_FieldData\AAG_FieldData\AAG_FieldData.gdb\extract_masked_fromLandsat"
+mask_tiff = r"C:\Users\Garima\Desktop\ArcGISPro\Ch3\AAG_FieldData\AAG_FieldData\AAG_FieldData.gdb\aqua_class2mask"
+output_folder = r"C:\Users\Garima\Desktop\ArcGISPro\Ch3\AAG_FieldData\AAG_FieldData\Output_Data"  # Folder to save the output masked bands
+output_multi_band = r"C:\Users\Garima\Desktop\ArcGISPro\Ch3\AAG_FieldData\AAG_FieldData\AAG_FieldData.gdb\output_multiband_masked"  # Path for final output
+
+# Load the mask raster
+mask_raster = arcpy.Raster(mask_tiff)
+
+# Get the number of bands in the multi-band raster
+multi_band_raster = arcpy.Raster(multi_band_tiff)
+band_count = multi_band_raster.bandCount
+
+# Ensure the output folder exists
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+# List to store the masked bands as temporary outputs
+masked_band_list = []
+
+# Loop through each band and apply the mask
+for i in range(1, band_count + 1):
+    # Extract the current band from the multi-band raster
+    current_band = arcpy.ia.ExtractBand(multi_band_tiff, i)
+    
+    # Apply the mask using Con
+    masked_band = arcpy.sa.Con(mask_raster == 1, current_band)
+    
+    # Save the masked band to a temporary file
+    output_band_path = os.path.join(output_folder, f"masked_band_{i}.tif")
+    masked_band.save(output_band_path)
+    
+    # Add the saved band file path to the list for later combination
+    masked_band_list.append(output_band_path)
+
+# Now combine the masked bands into a single multi-band raster
+arcpy.management.CompositeBands(masked_band_list, output_multi_band)
+
+print(f"Masking complete. Multi-band raster saved to: {output_multi_band}")
+
+
+Step 6: Used the Soil Data points to extract the multi-band information from the now masked Landsat image using "Extract Multi values to points" tool in the Spatial Analyst Tools. 
+
+Step 7: Exported the Table to Excel to use in R. 
+
+Step 8: Test bands and model fit in R 
+
+
+Step 9: External Validity - Repeat Steps 1-4 also for Bangladesh sample area (1_Aquaculture+SoilSalinity_SampleArea_3Classes_Bangladesh)
+
+Step 10: In ArcGIS, import the GeoTIFF mask layer. 
+
+Step 11: Extract Value to Points - Select SOil Points for Bangladesh and Extract Mask Values to those. All "2" or Aqua can be dropped at the time of analysis. 
+
+Step 12: Extract Multi Values to Points - Select the Soil points with the mask value and the Landsat multiband layer. This step will extract all band values with the soil point data. Export this to an excel for analysis in R.
+
+
+
+

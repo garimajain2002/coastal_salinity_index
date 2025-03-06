@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?><messages><msg code="0" type="2">Start Time: Tuesday, April 30, 2024 1:57:15 PM</msg><msg code="-2147467259" type="100">Traceback (most recent call last):
+  File "c:\program files\arcgis\pro\Resources\ArcToolbox\scripts\ga_desktop_createbuffers.py", line 34, in &lt;module&gt;
+    dissolveFields=get_value(8, as_list=True),
+  File "c:\program files\arcgis\pro\Resources\ArcToolbox\Scripts\gautils\utilities.py", line 112, in run_ga_desktop_tool
+    gax = get_client()
+  File "c:\program files\arcgis\pro\Resources\ArcToolbox\Scripts\gautils\utilities.py", line 97, in get_client
+    return jobclient.JobClient(spark)
+  File "c:\program files\arcgis\pro\Resources\ArcToolbox\scripts\ga_spark\local\jobclient.py", line 11, in __init__
+    self._jgp = spark._sc._gateway.jvm.com.esri.arcgis.gae.desktop.DesktopPythonEnvironment.getJobClient()
+  File "c:\program files\arcgis\pro\Java\runtime\spark\python\lib\py4j-0.10.9.7-src.zip\py4j\java_gateway.py", line 1712, in __getattr__
+  File "c:\program files\arcgis\pro\Java\runtime\spark\python\lib\py4j-0.10.9.7-src.zip\py4j\java_gateway.py", line 1036, in send_command
+  File "c:\program files\arcgis\pro\Java\runtime\spark\python\lib\py4j-0.10.9.7-src.zip\py4j\clientserver.py", line 284, in _get_connection
+  File "c:\program files\arcgis\pro\Java\runtime\spark\python\lib\py4j-0.10.9.7-src.zip\py4j\clientserver.py", line 291, in _create_new_connection
+  File "c:\program files\arcgis\pro\Java\runtime\spark\python\lib\py4j-0.10.9.7-src.zip\py4j\clientserver.py", line 438, in connect_to_java_server
+ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it
+</msg><msg code="0" type="0">Failed script Create Buffers...</msg><msg code="-2147467259" type="100">Failed to execute (CreateBuffers).</msg><msg code="0" type="3">Failed at Tuesday, April 30, 2024 1:57:23 PM (Elapsed Time: 8.15 seconds)</msg></messages>

@@ -1,0 +1,8 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <Description>Band_7</Description>
+    <Metadata>
+      <MDI key="BandName">Band_7</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>
