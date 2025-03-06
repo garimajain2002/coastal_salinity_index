@@ -1,0 +1,44 @@
+// Function for Mean-Variance Normalization
+function meanVarianceNormalization(image, referenceImage, band, aoi) {
+  var refStats = referenceImage.select(band).reduceRegion({
+    reducer: ee.Reducer.mean().combine({
+      reducer2: ee.Reducer.stdDev(),
+      sharedInputs: true
+    }),
+    geometry: aoi,
+    scale: 30,
+    maxPixels: 1e13
+  });
+
+  var refMean = ee.Number(refStats.get(band + '_mean')).or(0);
+  var refStdDev = ee.Number(refStats.get(band + '_stdDev')).or(1);
+  
+  
+  var imgStats = image.select(band).reduceRegion({
+    reducer: ee.Reducer.mean().combine({
+      reducer2: ee.Reducer.stdDev(),
+      sharedInputs: true
+    }),
+    geometry: aoi,
+    scale: 30,
+    maxPixels: 1e13
+  });
+
+  var imgMean = ee.Number(imgStats.get(band + '_mean')).or(0);
+  var imgStdDev = ee.Number(imgStats.get(band + '_stdDev')).or(1);
+  
+  return image.select(band)
+    .subtract(imgMean)
+    .divide(imgStdDev)
+    .multiply(refStdDev)
+    .add(refMean)
+    .rename(band);
+}
+
+function normalizeBands(image, referenceImage, aoi) {
+  var bands = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'NDVI', 'NDWI', 'NDSI'];
+  var normalizedBands = bands.map(function(band) {
+    return meanVarianceNormalization(image, referenceImage, band + '_p30', aoi);
+  });
+  return ee.Image.cat(normalizedBands);
+}
