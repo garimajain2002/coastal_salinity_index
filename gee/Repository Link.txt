@@ -1,4 +1,4 @@
 Code (India): https://code.earthengine.google.com/ae6d73ee3a5197ea4ebf2f067624c3a4
-Code (Bangladesh): https://code.earthengine.google.com/75c257407d34b6344463da9fc11d8adc
+Code (Bangladesh): https://code.earthengine.google.com/e1a0270fd5e4d49e450c3876955e7caf
 
 Assets: https://code.earthengine.google.com/?asset=projects/ee-garimajain2002/assets/Aquaculture_Soil_Salinity
