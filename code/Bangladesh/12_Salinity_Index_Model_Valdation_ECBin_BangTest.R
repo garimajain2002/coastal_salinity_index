@@ -21,7 +21,7 @@ getwd()
 soil_data <- read.csv("data/soil_data_allindices.csv")
 head(soil_data)
 
-soil_data_bang <- read.csv("data/Bangladesh_Sample_Points/soil_data_bang.csv")
+soil_data_bang <- read.csv("data/Bangladesh_Sample_Points/soil_data_bang_geom.csv")
 
 
 # Select the type of EC to be used here 
