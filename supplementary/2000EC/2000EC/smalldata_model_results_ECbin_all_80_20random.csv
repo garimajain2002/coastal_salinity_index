@@ -1,0 +1,6 @@
+Row Labels,Average of Accuracy_Train,Average of Accuracy_Test
+ANN,0.969518072,0.85047619
+Logistic,0.98939759,0.782380952
+Random Forest,1,0.919047619
+(blank),,
+Grand Total,0.986305221,0.850634921

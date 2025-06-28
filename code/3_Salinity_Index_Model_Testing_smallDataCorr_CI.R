@@ -440,5 +440,5 @@ for (i in 1:100) {
 }
 
 # Save results to a CSV file
-write.csv(results_df, "outputs/smalldata_model_results_ECcont_CorrVar_90CI_80_20.csv")
+write.csv(results_df, "outputs/smalldata_model_results_ECcont_CorrVar_90CI_80_20_geom.csv")
 # ! For some reason Quantile Regression is not returning a result. Check later

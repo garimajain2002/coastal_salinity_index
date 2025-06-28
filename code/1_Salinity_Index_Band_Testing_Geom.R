@@ -858,6 +858,10 @@ ggsave("outputs/Moisture_NBSWIR2_Poly_geom.png", width = 8, height = 6, dpi = 30
 # Step 5. Conduct accuracy testing with the remaining 20% points 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+head(soil_data)
+soil_data$EC_all <- soil_data$EC # keep a copy of continuous EC 
+
+
 # Make a 80-20 split data for training and testing 
 # Set seed for reproducibility
 set.seed(123)  # set a seed number to repeat the same each time
@@ -939,7 +943,8 @@ models[['NIR']] <- linear_NIR
 models[['SWIR-1']] <- linear_SWIR1
 models[['SWIR-2']] <- linear_SWIR2
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Linear_Bands_geom.xlsx")
+
 
 # Note: Changing to normalized bands does nothing to R2. Returning to use Reflactances as is. 
 
@@ -969,7 +974,7 @@ models[['SI5']] <- linear_SI5
 models[['SAVI']] <- linear_SAVI
 models[['VSSI']] <- linear_VSSI
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Linear_Indices_geom.xlsx")
 
 
 # Additional combinations: NBR, NBG, NBNIR, NBSWIR1, NBSWIR2, NRSWIR1, NRSWIR2, NGSWIR1, NGSWIR2, NNIRSWIR1, NNIRSWIR2
@@ -998,7 +1003,7 @@ models[['NGSWIR2']] <- linear_NGSWIR2
 models[['NNIRSWIR1']] <- linear_NNIRSWIR1
 models[['NNIRSWIR2']] <- linear_NNIRSWIR2
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Linear_Combs_geom.xlsx")
 
 
 
@@ -1019,7 +1024,7 @@ models[['NIR']] <- poly_NIR
 models[['SWIR-1']] <- poly_SWIR1
 models[['SWIR-2']] <- poly_SWIR2
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Quad_Bands_geom.xlsx")
 # Indicates that Red and Green fit better as linear than quadratic, but NIR overall model fit is better with quadratic. 
 # Note: using normalized bands does nothing to R2. Using reflanctances to keep the interpretation easier. 
 
@@ -1050,7 +1055,7 @@ models[['SI5']] <- poly_SI5
 models[['SAVI']] <- poly_SAVI
 models[['VSSI']] <- poly_VSSI
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Quad_Indices_geom.xlsx")
 
 
 # Additional combinations: NBR, NBG, NBNIR, NBSWIR1, NBSWIR2, NRSWIR1, NRSWIR2, NGSWIR1, NGSWIR2,NNIRSWIR1, NNIRSWIR2
@@ -1079,7 +1084,7 @@ models[['NGSWIR2']] <- poly_NGSWIR2
 models[['NNIRSWIR1']] <- poly_NNIRSWIR1
 models[['NNIRSWIR2']] <- poly_NNIRSWIR2
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Quad_Combs_geom.xlsx")
 
 
 
@@ -1102,7 +1107,7 @@ models[['NIR']] <- log_NIR
 models[['SWIR-1']] <- log_SWIR1
 models[['SWIR-2']] <- log_SWIR2
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Log_Bands_geom.xlsx")
 
 # Note: Using normalized bands does nothing to the R2. Using reflactance values to keep the interpretation easier
 
@@ -1132,7 +1137,7 @@ models[['SI5']] <- log_SI5
 models[['SAVI']] <- log_SAVI
 models[['VSSI']] <- log_VSSI
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Log_Indices_geom.xlsx")
 
 
 # Additional combinations: NBR, NBG, NBNIR, NBSWIR1, NBSWIR2, NRSWIR1, NRSWIR2, NGSWIR1, NGSWIR2, NNIRSWIR1, NNIRSWIR2
@@ -1161,7 +1166,7 @@ models[['NGSWIR2']] <- log_NGSWIR2
 models[['NNIRSWIR1']] <- log_NNIRSWIR1
 models[['NNIRSWIR2']] <- log_NNIRSWIR2
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/Log_Combs_geom.xlsx")
 
 
 
@@ -1185,7 +1190,7 @@ models[['Linear']] <- linear_all
 models[['Quadratic']] <- poly_all
 models[['Log Linear']] <- log_all
 
-msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf')
+msummary(models, stars = c('*' = .1, '**' = .05, '***' = .01), filename = 'table.rtf', output = "outputs/All_geom.xlsx")
 # While R2 is high, adjusted R2 is lower since too many predictors are added
 # Result: R2(quadratic) = 0.891 / Adj R2 = 0.705 
 # Most bands are also not significant, except NBSWIR2 in the linear and log fits and to some extent NRSWIR2 in the linear fit 
